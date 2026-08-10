@@ -3,6 +3,7 @@
  * vantell_lib.py, through a FileProvider.
  */
 import yaml from 'js-yaml';
+import { displayValue } from './display';
 import { pathMatches } from './glob';
 import { SHAREABLE_VIS } from './types';
 import type {
@@ -132,7 +133,7 @@ export async function loadVaultConfig(
       }
       const scopeRaw = rec['report_scope'];
       if (scopeRaw !== null && scopeRaw !== undefined) {
-        merged.report_scope = String(scopeRaw);
+        merged.report_scope = displayValue(scopeRaw);
       }
       const dvRaw = rec['default_visibility'];
       if (dvRaw !== null && dvRaw !== undefined && typeof dvRaw === 'object' && !Array.isArray(dvRaw)) {
@@ -142,7 +143,7 @@ export async function loadVaultConfig(
             dv[pat] = { visibility: val }; // shorthand: "wiki/**": org
           } else if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
             const vv = val as Record<string, unknown>;
-            const rule: DefaultVisibilityRule = { visibility: String(vv['visibility'] ?? '') };
+            const rule: DefaultVisibilityRule = { visibility: displayValue(vv['visibility'] ?? '') };
             if (typeof vv['max_level'] === 'number') rule.max_level = vv['max_level'];
             dv[pat] = rule;
           } else {

@@ -9,7 +9,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    // Vendored declarations so type resolution works without node_modules
+    // (the Obsidian directory's automated review lints without installing).
+    "paths": {
+      "js-yaml": ["types/js-yaml.d.ts"],
+      "@noble/ed25519": ["types/noble-ed25519.d.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "types"]
 }

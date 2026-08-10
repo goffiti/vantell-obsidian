@@ -5,6 +5,7 @@
  * REFUSES on capture/person/excluded/regex-hit/malformed classification —
  * the categorical rules of build-spec §1.0 bind this module too.
  */
+import { displayValue } from './display';
 import { MALFORMED, parseFrontmatter, serializeNote, type Frontmatter } from './frontmatter';
 import { pathMatches } from './glob';
 import { looksCaptureNote, looksPersonNote } from './heuristics';
@@ -217,7 +218,7 @@ export function markNote(
   if (opts.derivedFrom) {
     if (fmd['derived_from'] !== opts.derivedFrom) {
       changes.push(
-        `derived_from: ${String(fmd['derived_from'] ?? 'none')} -> ${opts.derivedFrom}`,
+        `derived_from: ${displayValue(fmd['derived_from'] ?? 'none')} -> ${opts.derivedFrom}`,
       );
     }
     const requested = maxLevel !== null ? maxLevel : DERIVED_MAX_LEVEL;
@@ -226,7 +227,7 @@ export function markNote(
   }
 
   if (fmd['visibility'] !== opts.visibility) {
-    changes.push(`visibility: ${String(fmd['visibility'] ?? 'none')} -> ${opts.visibility}`);
+    changes.push(`visibility: ${displayValue(fmd['visibility'] ?? 'none')} -> ${opts.visibility}`);
   }
   fmd['visibility'] = opts.visibility;
 
@@ -243,7 +244,7 @@ export function markNote(
 
   if (maxLevel !== null) {
     if (fmd['max_level'] !== maxLevel) {
-      changes.push(`max_level: ${String(fmd['max_level'] ?? 'none')} -> ${maxLevel}`);
+      changes.push(`max_level: ${displayValue(fmd['max_level'] ?? 'none')} -> ${maxLevel}`);
     }
     fmd['max_level'] = maxLevel;
   }

@@ -6,9 +6,7 @@ Vantell lets colleagues discover what topics you have knowledge about, without y
 
 ## Install
 
-- **Community directory** (once listed): in Obsidian, *Settings → Community plugins → Browse*, search for “Vantell”, then Install and Enable.
-- **Beta, via BRAT**: install the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin, then *Add beta plugin* → `goffiti/vantell-obsidian`. BRAT keeps you on the latest release automatically.
-- **Manual**: download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/goffiti/vantell-obsidian/releases/latest) into `<your vault>/.obsidian/plugins/vantell/`, then enable Vantell under *Settings → Community plugins*.
+In Obsidian, open *Settings → Community plugins → Browse*, search for “Vantell”, then Install and Enable.
 
 ## The Vantell panel
 

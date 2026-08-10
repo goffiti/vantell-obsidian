@@ -3,6 +3,7 @@
  * pre-scan classification gate, two-layer per-note classification,
  * locked-folder aggregation (name minimization), stats/folders/topics.
  */
+import { displayValue } from './display';
 import { pathMatches } from './glob';
 import { MALFORMED, parseFrontmatter, type Frontmatter } from './frontmatter';
 import {
@@ -224,6 +225,10 @@ export interface ScanOptions {
   onProgress?: (filesScanned: number, total: number) => void;
   /** Yield to the event loop every N files so the UI can paint. */
   yieldEvery?: number;
+  /** How to yield — the host supplies its own scheduler (e.g. the plugin
+   * passes window.setTimeout) so this package stays free of timer globals.
+   * Defaults to a microtask yield. */
+  yieldFn?: () => Promise<void>;
 }
 
 /** Full vault scan — port of scan.py scan(). */
@@ -306,7 +311,7 @@ export async function scan(
     total += 1;
     if (opts.onProgress) opts.onProgress(total, paths.length);
     if (opts.yieldEvery && total % opts.yieldEvery === 0) {
-      await new Promise((r) => globalThis.setTimeout(r, 0));
+      await (opts.yieldFn ? opts.yieldFn() : Promise.resolve());
     }
 
     let f = folders.get(top);
@@ -360,7 +365,7 @@ export async function scan(
       bucket(top, 'capture');
       if (vis !== undefined && vis !== null && vis !== 'private') {
         warnings.push(
-          `WARNING: visibility '${String(vis)}' set on capture-layer file — categorically ignored (§1.0): ${rel}`,
+          `WARNING: visibility '${displayValue(vis)}' set on capture-layer file — categorically ignored (§1.0): ${rel}`,
         );
       }
       warnDefaultDemoted(rel, 'capture-layer (source: capture)');
@@ -373,7 +378,7 @@ export async function scan(
       bucket(top, 'person');
       if (vis !== undefined && vis !== null && vis !== 'private') {
         warnings.push(
-          `WARNING: visibility '${String(vis)}' set on person-centric note — categorically ignored (§1.0): ${rel}`,
+          `WARNING: visibility '${displayValue(vis)}' set on person-centric note — categorically ignored (§1.0): ${rel}`,
         );
       }
       warnDefaultDemoted(rel, 'person-subject (subject: person)');
@@ -387,7 +392,7 @@ export async function scan(
       bucket(top, 'person');
       if (visShareable) {
         warnings.push(
-          `WARNING: visibility '${String(vis)}' set on a note that looks like a person dossier (plain-text Name:/Email:/Role: headers) — demoted to person-subject, categorically ignored: ${rel}`,
+          `WARNING: visibility '${displayValue(vis)}' set on a note that looks like a person dossier (plain-text Name:/Email:/Role: headers) — demoted to person-subject, categorically ignored: ${rel}`,
         );
       }
       warnDefaultDemoted(rel, 'demoted to person-subject by the dossier heuristic');
@@ -399,7 +404,7 @@ export async function scan(
       bucket(top, 'capture');
       if (visShareable) {
         warnings.push(
-          `WARNING: visibility '${String(vis)}' set on a note that looks like captured mail (From:/To:/Subject:/Date: headers) — demoted to capture layer, categorically ignored: ${rel}`,
+          `WARNING: visibility '${displayValue(vis)}' set on a note that looks like captured mail (From:/To:/Subject:/Date: headers) — demoted to capture layer, categorically ignored: ${rel}`,
         );
       }
       warnDefaultDemoted(rel, 'demoted to capture layer by the mail-header heuristic');
@@ -425,7 +430,7 @@ export async function scan(
       bucket(top, 'excluded');
       if (visShareable) {
         warnings.push(
-          `WARNING: marked shareable ('${String(vis)}') but body matches exclude pattern /${hit.pattern}/ — excluded, are you sure about this note?: ${rel}`,
+          `WARNING: marked shareable ('${displayValue(vis)}') but body matches exclude pattern /${hit.pattern}/ — excluded, are you sure about this note?: ${rel}`,
         );
       } else {
         warnings.push(`body matches exclude pattern /${hit.pattern}/ — excluded: ${rel}`);

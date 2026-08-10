@@ -30,7 +30,10 @@ export interface VaultScanContext {
 export async function scanVault(app: App): Promise<VaultScanContext> {
   const fp = makeObsidianProvider(app);
   const { cfg } = await loadVaultConfig(fp);
-  const result = await scan(fp, cfg, { yieldEvery: 150 });
+  const result = await scan(fp, cfg, {
+    yieldEvery: 150,
+    yieldFn: () => new Promise((r) => window.setTimeout(r, 0)),
+  });
   return { cfg, result };
 }
 

@@ -1,0 +1,11 @@
+{
+  // esbuild-only tsconfig: WITHOUT the "paths" from tsconfig.json. Those
+  // paths map runtime packages (js-yaml, @noble/ed25519) to vendored .d.ts
+  // files for type-only resolution; if esbuild saw them it would bundle the
+  // declaration files as empty modules and silently break the plugin.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {}
+  }
+}

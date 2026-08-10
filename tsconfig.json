@@ -3,7 +3,10 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
@@ -11,7 +14,25 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "types": []
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "obsidian": [
+        "types/obsidian.d.ts"
+      ],
+      "@vantell/vaultscan-core": [
+        "vaultscan-core/src/index.ts"
+      ],
+      "js-yaml": [
+        "vaultscan-core/types/js-yaml.d.ts"
+      ],
+      "@noble/ed25519": [
+        "vaultscan-core/types/noble-ed25519.d.ts"
+      ]
+    }
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "types"
+  ]
 }
