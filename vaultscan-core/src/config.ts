@@ -29,7 +29,11 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   ],
   exclude_paths: [
     'Personal/**', 'Journal/**', 'Private/**',
-    '.obsidian/**', '.git/**', '.claude/**',
+    // Hidden folders are never notes: covers .git, .claude, and the Obsidian
+    // config folder WHATEVER the user renamed it to (it's conventionally
+    // dot-prefixed; Obsidian's own file index never lists it anyway — this
+    // matters for filesystem walkers like the vantell-connect skill).
+    '**/.*/**',
   ],
   exclude_if_matches: [
     '(?i)\\b(salary|severance|nda|confidential)\\b',
