@@ -179,6 +179,7 @@
   fill: var(--text-accent);
   opacity: 0.85;
   transition: opacity 0.15s ease;
+  cursor: pointer;
 }
 .vantell-constellation .vc-node:hover {
   opacity: 1;
@@ -215,6 +216,9 @@
 }
 .vantell-brain-knock {
   margin-top: 6px;
+}
+.vantell-code-input {
+  text-transform: uppercase;
 }
 @keyframes vantell-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-accent) 45%, transparent); }

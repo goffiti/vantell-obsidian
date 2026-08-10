@@ -34,7 +34,7 @@ export default class VantellPlugin extends Plugin {
     this.addRibbonIcon('radio', 'Vantell', () => void this.activateView());
     this.addCommand({
       id: 'open-panel',
-      name: 'Open the Vantell panel',
+      name: 'Open the panel',
       callback: () => void this.activateView(),
     });
 
@@ -101,7 +101,7 @@ export default class VantellPlugin extends Plugin {
     });
     this.addCommand({
       id: 'uninstall',
-      name: 'Remove Vantell from this vault…',
+      name: 'Remove from this vault…',
       callback: () => new UninstallModal(this.app, this).open(),
     });
 

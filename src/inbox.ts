@@ -10,7 +10,7 @@
  * DID-signed /v1/agent/knocks route) — this module never self-approves.
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { respondKnock, signedGet, signedPost } from './api';
+import { base64ToUtf8, respondKnock, signedGet, signedPost, utf8ToBase64 } from './api';
 import {
   buildPastePrompt,
   draftAnswer,
@@ -59,7 +59,7 @@ export interface IncomingRequest {
 
 function decodeB64Json(b64: string): Record<string, unknown> | null {
   try {
-    const parsed: unknown = JSON.parse(atob(b64));
+    const parsed: unknown = JSON.parse(base64ToUtf8(b64));
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : null;
@@ -551,7 +551,7 @@ export class ComposeAnswerModal extends Modal {
       };
       await signedPost(ident, this.plugin.data.apiBase, '/v1/envelope', {
         to: r.fromDid,
-        ciphertext: btoa(unescape(encodeURIComponent(JSON.stringify(answer)))),
+        ciphertext: utf8ToBase64(JSON.stringify(answer)),
       });
       this.plugin.data.handledEnvelopes.push(r.envelopeId);
       this.plugin.data.pendingEnvelopes = this.plugin.data.pendingEnvelopes.filter(

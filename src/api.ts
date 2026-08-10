@@ -28,6 +28,22 @@ function apiBase(ident: { api?: string } | null, fallback: string): string {
   return (ident?.api ?? fallback).replace(/\/+$/, '');
 }
 
+/** UTF-8-safe base64 for envelope payloads (bare btoa/atob is Latin-1 only
+ * and would garble any non-ASCII text). */
+export function utf8ToBase64(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+export function base64ToUtf8(b64: string): string {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 /** Claim a pairing code: binds this device's public key to the account that
  * issued the code and returns the DID (and the API base to pin). */
 export async function claimPairingCode(

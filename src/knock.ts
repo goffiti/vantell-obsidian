@@ -8,7 +8,7 @@
  * poll (see main.ts / inbox.ts).
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { signedGet, signedPost } from './api';
+import { signedGet, signedPost, utf8ToBase64 } from './api';
 import { loadIdentity } from './identity';
 import type { ReceivedAnswer } from './data';
 import type VantellPlugin from './main';
@@ -186,7 +186,7 @@ export class KnockComposerModal extends Modal {
       };
       await signedPost(ident, this.plugin.data.apiBase, '/v1/envelope', {
         to: this.toDid,
-        ciphertext: btoa(unescape(encodeURIComponent(JSON.stringify(query)))),
+        ciphertext: utf8ToBase64(JSON.stringify(query)),
         level: this.level,
         topic: this.topic.trim() || undefined,
         purpose: this.purpose.trim(),

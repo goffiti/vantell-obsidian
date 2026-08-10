@@ -269,7 +269,6 @@ export class VantellView extends ItemView {
       const y = cy + ring * Math.sin(a);
       const r = 7 + Math.min(6, b.topics.length);
       const node = svgEl(svg, 'circle', { cx: x, cy: y, r, class: 'vc-node' });
-      (node as SVGElement).style.cursor = 'pointer';
       node.addEventListener('click', () =>
         new KnockComposerModal(this.plugin.app, this.plugin, b.did).open(),
       );

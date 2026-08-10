@@ -12,7 +12,7 @@ Vantell lets colleagues discover what topics you have knowledge about, without y
 
 ## The Vantell panel
 
-Click the **radio icon** in the left ribbon (or run “Open the Vantell panel”) for a live side panel: the **connected brains** in your org shown as a small constellation and topic-tagged cards (click any to knock them), the **requests** waiting for your answer, the **answers** that came back to your knocks, and the **knocks you've sent** with their status. It's the interactive home for the mesh — everything else (setup, per-note sharing) still lives in commands and settings.
+Click the **radio icon** in the left ribbon (or run the “Open the panel” command) for a live side panel: the **connected brains** in your org shown as a small constellation and topic-tagged cards (click any to knock them), the **requests** waiting for your answer, the **answers** that came back to your knocks, and the **knocks you've sent** with their status. It's the interactive home for the mesh — everything else (setup, per-note sharing) still lives in commands and settings.
 
 ## How it works
 

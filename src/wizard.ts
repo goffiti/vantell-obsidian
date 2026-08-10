@@ -134,7 +134,7 @@ export class SetupWizard extends Modal {
       .addText((t) => {
         t.setPlaceholder('e.g. K7RMXWPA').onChange((v) => (code = v));
         t.inputEl.autocapitalize = 'characters';
-        t.inputEl.style.textTransform = 'uppercase';
+        t.inputEl.addClass('vantell-code-input');
       })
       .addButton((b) =>
         b

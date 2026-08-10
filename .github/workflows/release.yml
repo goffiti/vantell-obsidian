@@ -1,0 +1,56 @@
+# Attested release for the PUBLIC plugin repo (goffiti/vantell-obsidian).
+# This file lives in the monorepo at obsidian-plugin/.github/workflows/ and is
+# synced to the public repo root by scripts/publish_plugin_public.sh.
+#
+# Runs when that script pushes a bare-version tag (e.g. 0.8.3). Building and
+# releasing HERE — not locally — is what produces the GitHub artifact
+# attestations Obsidian's directory checks for main.js and styles.css.
+name: release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify tag matches manifest version
+        run: |
+          VERSION="$(node -p "require('./manifest.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME != manifest version $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            styles.css
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Vantell $GITHUB_REF_NAME" \
+            --notes "Vantell for Obsidian $GITHUB_REF_NAME. See the README for what this plugin does and the full network-use disclosure." \
+            main.js manifest.json styles.css
