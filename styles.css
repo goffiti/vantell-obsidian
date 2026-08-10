@@ -1,0 +1,223 @@
+/* Vantell for Obsidian */
+
+.vantell-wizard {
+  max-width: 560px;
+}
+
+.vantell-wizard .vantell-sub {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.vantell-wizard .vantell-fineprint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  margin: 8px 0 0;
+}
+
+.vantell-folder-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 4px 12px;
+  margin: 8px 0;
+}
+
+.vantell-review-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px 16px;
+  margin: 8px 0;
+}
+
+.vantell-review-card h3 {
+  margin: 8px 0 4px;
+  font-size: var(--font-ui-medium);
+}
+
+.vantell-review-card ul {
+  margin: 4px 0;
+}
+
+.vantell-warnings {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.vantell-wizard pre {
+  max-height: 240px;
+  overflow: auto;
+  background: var(--background-secondary);
+  padding: 8px;
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-smaller);
+}
+
+.vantell-hidden {
+  display: none;
+}
+
+.vantell-status {
+  cursor: pointer;
+}
+
+/* Inbound mesh content: displayed, never interpreted (Rule 1). */
+.vantell-inert-quote {
+  border-left: 3px solid var(--background-modifier-border);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+.vantell-answer {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-ui-medium);
+  padding: 8px;
+  border-radius: var(--radius-s);
+}
+
+/* ---------------- side panel ---------------- */
+.vantell-panel {
+  padding: 8px 12px 24px;
+  overflow-y: auto;
+}
+.vantell-panel-header {
+  position: sticky;
+  top: 0;
+  background: var(--background-primary);
+  padding-top: 4px;
+  padding-bottom: 8px;
+  z-index: 1;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 10px;
+}
+.vantell-panel-titlerow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.vantell-panel-titlerow h2 {
+  margin: 0;
+}
+.vantell-panel-status {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-accent);
+}
+.vantell-panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vantell-panel-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vantell-section {
+  margin: 14px 0;
+}
+.vantell-section h3 {
+  margin: 0 0 6px;
+  font-size: var(--font-ui-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.vantell-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--background-secondary);
+}
+.vantell-card-head {
+  font-weight: 600;
+}
+.vantell-card-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+.vantell-chip {
+  display: inline-block;
+  font-size: var(--font-ui-smaller);
+  padding: 1px 8px;
+  margin: 2px 4px 0 0;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+.vantell-chip.is-answered {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.vantell-chips {
+  margin-top: 4px;
+}
+
+/* connected-brains constellation + cards */
+.vantell-constellation {
+  margin: 4px 0 10px;
+}
+.vantell-constellation .vc-edge {
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+}
+.vantell-constellation .vc-self {
+  fill: var(--interactive-accent);
+}
+.vantell-constellation .vc-self-label {
+  fill: var(--text-on-accent);
+  font-size: 10px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.vantell-constellation .vc-node {
+  fill: var(--text-accent);
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+.vantell-constellation .vc-node:hover {
+  opacity: 1;
+}
+.vantell-constellation .vc-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+.vantell-brain-grid {
+  display: grid;
+  gap: 8px;
+}
+.vantell-brain-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 8px 10px;
+}
+.vantell-brain-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vantell-brain-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-accent);
+  box-shadow: 0 0 0 0 var(--text-accent);
+  animation: vantell-pulse 2.6s infinite;
+}
+.vantell-brain-name {
+  font-weight: 600;
+}
+.vantell-brain-knock {
+  margin-top: 6px;
+}
+@keyframes vantell-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-accent) 45%, transparent); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}

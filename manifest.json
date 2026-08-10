@@ -1,0 +1,11 @@
+{
+  "id": "vantell",
+  "name": "Vantell",
+  "version": "0.8.2",
+  "minAppVersion": "1.5.0",
+  "description": "Share what you know \u2014 never your notes. Colleagues see topic labels and counts from folders you choose; note contents never leave your vault.",
+  "author": "Vantell",
+  "authorUrl": "https://vantell.ai",
+  "helpUrl": "https://github.com/goffiti/vantell-obsidian#readme",
+  "isDesktopOnly": true
+}

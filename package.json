@@ -1,0 +1,25 @@
+{
+  "name": "vantell-obsidian",
+  "private": true,
+  "version": "0.8.2",
+  "description": "Vantell for Obsidian — share what you know, never your notes.",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs watch",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.3.0",
+    "@vantell/vaultscan-core": "file:./vaultscan-core",
+    "js-yaml": "^4.3.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.24.0",
+    "obsidian": "^1.7.2",
+    "tslib": "^2.7.0",
+    "typescript": "^5.6.2"
+  }
+}
