@@ -47,7 +47,7 @@ export function classifyNote(
   compiled: CompiledRegexes,
 ): Classification {
   const malformed = fm === MALFORMED;
-  const fmd: Record<string, unknown> = malformed ? {} : (fm as Record<string, unknown>);
+  const fmd: Record<string, unknown> = malformed ? {} : fm;
 
   // 1. capture layer — categorical (§1.0)
   if (pathMatches(rel, cfg.capture_paths ?? []) || fmd['source'] === 'capture') {
@@ -158,7 +158,7 @@ export async function listCandidates(
     const { fm, body } = parseFrontmatter(text);
     const { bucket } = classifyNote(rel, fm, body, cfg, compiled);
     if (bucket !== 'authored') continue;
-    const fmd = fm === MALFORMED ? {} : (fm as Record<string, unknown>);
+    const fmd = fm === MALFORMED ? {} : fm;
     if (fmd['visibility'] !== undefined && fmd['visibility'] !== null) continue; // owner already decided
     if (matchDefaultVisibility(rel, defaultRules)) continue; // already shareable via folder default
     if (body.trim().length < minChars) continue;
@@ -208,7 +208,9 @@ export function markNote(
   const cls = classifyNote(rel, fm, body, cfg, compiled);
   if (cls.bucket !== 'authored') return { ok: false, refused: cls };
 
-  const fmd: Record<string, unknown> = { ...(fm as Record<string, unknown>) };
+  // classifyNote never returns 'authored' for malformed frontmatter, but the
+  // type system can't see that — narrow explicitly.
+  const fmd: Record<string, unknown> = fm === MALFORMED ? {} : { ...fm };
   const changes: string[] = [];
 
   let maxLevel = opts.maxLevel ?? null;
@@ -266,7 +268,7 @@ export function markNotePrivate(
   if (fm === MALFORMED) {
     return { ok: false, reason: 'malformed frontmatter — fix the YAML block by hand first' };
   }
-  const fmd: Record<string, unknown> = { ...(fm as Record<string, unknown>) };
+  const fmd: Record<string, unknown> = { ...fm };
   if (fmd['visibility'] === 'private') return { ok: true, content: text, changed: false };
   fmd['visibility'] = 'private';
   const content = serializeNote(fmd, body);
@@ -297,7 +299,7 @@ export function stripShareFrontmatter(
   if (fm === MALFORMED) {
     return { ok: false, reason: 'malformed frontmatter — fix the YAML block by hand first' };
   }
-  const fmd: Record<string, unknown> = { ...(fm as Record<string, unknown>) };
+  const fmd: Record<string, unknown> = { ...fm };
   const removed: string[] = [];
   const vis = fmd['visibility'];
   if (typeof vis === 'string' && (vis === 'private' || SHAREABLE_VIS.includes(vis))) {
@@ -331,7 +333,7 @@ export function unmarkNote(
   if (fm === MALFORMED) {
     return { ok: false, reason: 'malformed frontmatter — fix the YAML block by hand first' };
   }
-  const fmd: Record<string, unknown> = { ...(fm as Record<string, unknown>) };
+  const fmd: Record<string, unknown> = { ...fm };
   const removed = SHARE_KEYS.filter((k) => k in fmd);
   if (removed.length === 0) return { ok: true, content: text, removed: [] };
   for (const k of removed) delete fmd[k];

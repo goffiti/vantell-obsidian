@@ -1,8 +1,8 @@
 {
   "id": "vantell",
   "name": "Vantell",
-  "version": "0.8.3",
-  "minAppVersion": "1.5.0",
+  "version": "0.8.4",
+  "minAppVersion": "1.7.2",
   "description": "Connect your second brain to your team's. Colleagues discover what you know from topic labels and note counts in folders you choose \u2014 note contents never leave your vault.",
   "author": "Vantell",
   "authorUrl": "https://vantell.ai",

@@ -306,7 +306,7 @@ export async function scan(
     total += 1;
     if (opts.onProgress) opts.onProgress(total, paths.length);
     if (opts.yieldEvery && total % opts.yieldEvery === 0) {
-      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => globalThis.setTimeout(r, 0));
     }
 
     let f = folders.get(top);
@@ -350,7 +350,7 @@ export async function scan(
     const fm: Frontmatter = parsed.fm;
     const body = parsed.body;
     const malformed = fm === MALFORMED;
-    const fmd: Record<string, unknown> = malformed ? {} : (fm as Record<string, unknown>);
+    const fmd: Record<string, unknown> = malformed ? {} : fm;
     const vis = fmd['visibility'];
     const visShareable = typeof vis === 'string' && SHAREABLE_VIS.includes(vis);
 

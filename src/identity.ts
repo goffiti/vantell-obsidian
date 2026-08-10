@@ -31,7 +31,7 @@ function store(app: App): LocalStore {
       const raw = window.localStorage.getItem(prefix + key);
       if (raw === null) return null;
       try {
-        return JSON.parse(raw);
+        return JSON.parse(raw) as unknown;
       } catch {
         return null;
       }

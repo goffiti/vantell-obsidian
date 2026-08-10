@@ -107,9 +107,9 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
     const body = decodeB64Json(env.ciphertext);
     if (!body) continue; // sealed or foreign — a future client's problem
     if (body['type'] === 'knock_response') {
-      notifications.push(
-        `Your knock was ${String(body['decision'] ?? 'answered')} — receipt ${String(body['receipt_id'] ?? '')}`,
-      );
+      const decision = typeof body['decision'] === 'string' ? body['decision'] : 'answered';
+      const receipt = typeof body['receipt_id'] === 'string' ? body['receipt_id'] : '';
+      notifications.push(`Your knock was ${decision} — receipt ${receipt}`);
       plugin.data.handledEnvelopes.push(env.id);
       continue;
     }
@@ -212,6 +212,51 @@ export async function respondToKnock(
 }
 
 /* ---------------------------------------------------------------- modals */
+
+/** Promise-based replacement for window.confirm (which blocks the UI thread
+ * and is disallowed for community plugins). Resolves false when dismissed. */
+class ConfirmModal extends Modal {
+  private resolved = false;
+  private resolve!: (ok: boolean) => void;
+
+  constructor(
+    app: App,
+    private heading: string,
+    private paragraphs: string[],
+    private cta: string,
+  ) {
+    super(app);
+  }
+
+  ask(): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.resolve = resolve;
+      this.open();
+    });
+  }
+
+  onOpen(): void {
+    this.titleEl.setText(this.heading);
+    for (const p of this.paragraphs) this.contentEl.createEl('p', { text: p, cls: 'vantell-sub' });
+    new Setting(this.contentEl)
+      .addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()))
+      .addButton((b) =>
+        b
+          .setButtonText(this.cta)
+          .setCta()
+          .onClick(() => {
+            this.resolved = true;
+            this.resolve(true);
+            this.close();
+          }),
+      );
+  }
+
+  onClose(): void {
+    if (!this.resolved) this.resolve(false);
+    this.contentEl.empty();
+  }
+}
 
 export class RequestsModal extends Modal {
   constructor(
@@ -480,13 +525,17 @@ export class ComposeAnswerModal extends Modal {
     // Loud, one-time opt-in: drafting is the one path that sends note CONTENT
     // off the device (to the owner's own Anthropic account).
     if (!this.plugin.data.aiDraftConsented) {
-      const ok = window.confirm(
-        'Automatic drafting sends the text of your shareable notes for this topic ' +
-          'to your own Anthropic account (using your API key) to compose a draft. ' +
-          'Nothing is sent to the person who asked until you review and click Send.\n\n' +
-          'Only notes you already made shareable are ever included — never locked, private, or unchosen notes.\n\n' +
-          'Enable automatic drafting on this device?',
-      );
+      const ok = await new ConfirmModal(
+        this.app,
+        'Enable automatic drafting on this device?',
+        [
+          'Automatic drafting sends the text of your shareable notes for this topic ' +
+            'to your own Anthropic account (using your API key) to compose a draft. ' +
+            'Nothing is sent to the person who asked until you review and click Send.',
+          'Only notes you already made shareable are ever included — never locked, private, or unchosen notes.',
+        ],
+        'Enable drafting',
+      ).ask();
       if (!ok) return;
       this.plugin.data.aiDraftConsented = true;
       await this.plugin.saveData(this.plugin.data);

@@ -134,7 +134,7 @@ function looksLikeLinkRoll(title: string, body: string): boolean {
   const lines = body.split('\n').filter((l) => l.trim() !== '');
   if (lines.length < 8) return false;
   const listy = lines.filter(
-    (l) => /https?:\/\//.test(l) || /^\s*[-*]\s*\[[ x\-]?\]/.test(l),
+    (l) => /https?:\/\//.test(l) || /^\s*[-*]\s*\[[ x-]?\]/.test(l),
   ).length;
   return listy / lines.length > 0.35;
 }
@@ -167,7 +167,7 @@ export async function gatherDraftSources(app: App, topic: string | null): Promis
     }
     const { fm, body } = parseFrontmatter(text);
     if (fm === MALFORMED) continue;
-    const fmd = fm as Record<string, unknown>;
+    const fmd = fm;
     if (classifyNote(rel, fm, body, cfg, compiled).bucket !== 'authored') continue;
     const vis = fmd['visibility'];
     const shareable =

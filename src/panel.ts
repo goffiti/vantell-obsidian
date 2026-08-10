@@ -76,7 +76,7 @@ export class VantellView extends ItemView {
     const titleRow = header.createDiv({ cls: 'vantell-panel-titlerow' });
     titleRow.createEl('h2', { text: 'Vantell' });
     const last = this.plugin.data.lastPublished;
-    titleRow.createEl('span', {
+    titleRow.createSpan({
       cls: 'vantell-panel-status',
       text: ident?.did
         ? last
@@ -145,7 +145,7 @@ export class VantellView extends ItemView {
       }
       for (const a of answers.slice(0, 20)) {
         const card = body.createDiv({ cls: 'vantell-card' });
-        card.createEl('div', {
+        card.createDiv({
           cls: 'vantell-card-head',
           text: `${a.fromName}${a.topic ? ` · ${a.topic}` : ''}`,
         });
@@ -162,12 +162,12 @@ export class VantellView extends ItemView {
       }
       for (const k of sent.slice(0, 20)) {
         const card = body.createDiv({ cls: 'vantell-card' });
-        card.createEl('div', {
+        card.createDiv({
           cls: 'vantell-card-head',
           text: `${k.toName}${k.topic ? ` · ${k.topic}` : ''}`,
         });
-        card.createEl('div', { cls: 'vantell-sub', text: k.question });
-        card.createEl('span', {
+        card.createDiv({ cls: 'vantell-sub', text: k.question });
+        card.createSpan({
           cls: `vantell-chip ${k.status === 'answered' ? 'is-answered' : ''}`,
           text: k.status === 'answered' ? 'answered' : 'waiting',
         });
@@ -183,7 +183,7 @@ export class VantellView extends ItemView {
 
   private renderRequest(body: HTMLElement, r: IncomingRequest): void {
     const card = body.createDiv({ cls: 'vantell-card' });
-    card.createEl('div', {
+    card.createDiv({
       cls: 'vantell-card-head',
       text: `${r.fromName}${r.topic ? ` · ${r.topic}` : ''}${r.level !== null ? ` · L${r.level}` : ''}`,
     });
@@ -210,7 +210,7 @@ export class VantellView extends ItemView {
       const b = row.createEl('button', { text: 'Approve on dashboard' });
       b.onclick = () => window.open('https://app.vantell.ai/knocks', '_blank');
     } else {
-      row.createEl('span', { cls: 'vantell-sub', text: 'No matching consent found.' });
+      row.createSpan({ cls: 'vantell-sub', text: 'No matching consent found.' });
     }
   }
 

@@ -1,5 +1,5 @@
 import esbuild from 'esbuild';
-import builtins from 'builtin-modules';
+import { builtinModules } from 'node:module';
 import process from 'node:process';
 
 const banner = `/*
@@ -30,7 +30,8 @@ const ctx = await esbuild.context({
     '@lezer/common',
     '@lezer/highlight',
     '@lezer/lr',
-    ...builtins,
+    ...builtinModules,
+    'node:*',
   ],
   format: 'cjs',
   target: 'es2022',
