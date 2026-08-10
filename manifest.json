@@ -1,9 +1,9 @@
 {
   "id": "vantell",
   "name": "Vantell",
-  "version": "0.8.5",
-  "minAppVersion": "1.7.2",
-  "description": "Connect your second brain to your team's. Colleagues discover what you know from topic labels and note counts in folders you choose \u2014 note contents never leave your vault.",
+  "version": "0.8.6",
+  "minAppVersion": "1.13.0",
+  "description": "Connect your second brain to your team's. Colleagues discover what you know from topic labels and note counts in folders you choose — note contents never leave your vault.",
   "author": "Vantell",
   "authorUrl": "https://vantell.ai",
   "helpUrl": "https://github.com/goffiti/vantell-obsidian#readme",

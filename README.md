@@ -33,6 +33,10 @@ This plugin makes exactly two kinds of network calls, both to `api.vantell.ai`, 
 
 Never sent: note contents (except AI drafting, below), note titles (unless you explicitly share a note or tick one as an answer source), names of unchosen folders (they're reported only as one anonymous total), file paths, or any telemetry. Incoming requests are displayed as inert text and never written into your vault or executed.
 
+**Links the plugin opens** (in your browser, with nothing attached): `app.vantell.ai` — your dashboard, for pairing codes and knock approvals — and `claude.ai`, an optional shortcut offered by the paste-bridge drafting path. These two domains appear in the code only as links; the plugin's network *requests* go exclusively to `api.vantell.ai` (or the server you configured).
+
+**Why the code contains `atob`/`btoa`**: knock and answer payloads travel as base64-encoded JSON envelopes — the transport encoding defined by the open [Knock Protocol](https://vantell.ai/protocol/), not obfuscation. Envelopes are decoded only to be shown to you as inert text.
+
 ### Answer drafting — two ways, both optional
 
 When you answer a request you can draft it yourself, or get a hand:

@@ -179,7 +179,7 @@ export class UninstallModal extends Modal {
       .addButton((b) =>
         b
           .setButtonText('Remove everything listed above')
-          .setWarning()
+          .setDestructive()
           .onClick(() => void this.execute()),
       )
       .addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));

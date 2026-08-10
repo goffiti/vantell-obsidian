@@ -60,7 +60,14 @@ const eslint = new ESLint({
 // The real review lints only shipped sources — it has never flagged a test
 // file (vitest is unresolvable there and would drown the signal).
 const results = (
-  await eslint.lintFiles(['src/**/*.ts', 'vaultscan-core/src/**/*.ts'])
+  await eslint.lintFiles([
+    'src/**/*.ts',
+    'vaultscan-core/src/**/*.ts',
+    // The real scanner lints the vendored declarations too — keep them in
+    // the sim so we notice if their /* eslint-disable */ headers stop working.
+    'types/**/*.d.ts',
+    'vaultscan-core/types/**/*.d.ts',
+  ])
 ).filter((r) => !/\.test\.ts$|__tests__/.test(r.filePath));
 const formatter = await eslint.loadFormatter('stylish');
 console.log(await formatter.format(results));

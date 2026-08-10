@@ -1,0 +1,13 @@
+{
+  // Drift guard for the vendored subset in types/obsidian.d.ts: typecheck
+  // the plugin against the REAL obsidian package (and real dependency
+  // types) from node_modules. If the subset declares a signature the
+  // official API doesn't have, this config fails the build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {},
+    "types": []
+  },
+  "include": ["src"]
+}
