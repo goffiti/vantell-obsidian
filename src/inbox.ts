@@ -42,6 +42,8 @@ export interface IncomingAnswer {
   fromName: string;
   topic: string | null;
   summary: string;
+  /** Titles of the notes the answerer explicitly ticked as sources. */
+  sources: string[];
 }
 
 /** A decoded incoming query, plus its consent state. */
@@ -119,6 +121,9 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
         fromName: nameFromDid(env.from),
         topic: typeof body['topic'] === 'string' ? body['topic'] : null,
         summary: typeof body['summary'] === 'string' ? body['summary'] : '(no text)',
+        sources: Array.isArray(body['sources'])
+          ? body['sources'].filter((s): s is string => typeof s === 'string').slice(0, 10)
+          : [],
       });
       plugin.data.handledEnvelopes.push(env.id);
       continue;

@@ -22,6 +22,8 @@ export interface ReceivedAnswer {
   topic: string | null;
   summary: string;
   at: string;
+  /** Titles the answerer ticked as sources (absent on pre-0.8.11 records). */
+  sources?: string[];
 }
 
 /** A knock the owner sent — the outbox side of the panel. */

@@ -25,6 +25,8 @@ interface Brain {
   topics: string[];
   /** Reached through the owner's circles (cross-org) rather than the org. */
   viaCircles: string[];
+  /** Owner-written "what you can ask me" blurb from their manifest. */
+  about: string;
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -117,6 +119,7 @@ export class VantellView extends ItemView {
           display_name?: string;
           topics?: { label?: string }[];
           via_circles?: string[];
+          about?: string;
         }[];
       }>(ident, this.plugin.data.apiBase, '/v1/registry');
       this.brains = (reg.manifests ?? [])
@@ -126,6 +129,7 @@ export class VantellView extends ItemView {
           name: m.display_name || (m.did!.split(':').pop() ?? m.did!),
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
           viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
+          about: typeof m.about === 'string' ? m.about : '',
         }));
     } catch {
       /* keep last brains */
@@ -158,6 +162,9 @@ export class VantellView extends ItemView {
           text: `${a.fromName}${a.topic ? ` · ${a.topic}` : ''}`,
         });
         card.createEl('blockquote', { text: a.summary, cls: 'vantell-inert-quote' });
+        if (a.sources && a.sources.length > 0) {
+          card.createDiv({ cls: 'vantell-sub', text: `From their notes: ${a.sources.join(' · ')}` });
+        }
       }
     });
 
@@ -238,6 +245,8 @@ export class VantellView extends ItemView {
         const head = card.createDiv({ cls: 'vantell-brain-head' });
         head.createSpan({ cls: 'vantell-brain-dot' });
         head.createSpan({ cls: 'vantell-brain-name', text: b.name });
+        // Remote-authored text: rendered inert via text, per the quarantine rule.
+        if (b.about) card.createDiv({ cls: 'vantell-sub', text: b.about });
         const chips = card.createDiv({ cls: 'vantell-chips' });
         for (const t of b.topics.slice(0, 6)) chips.createSpan({ cls: 'vantell-chip', text: t });
         for (const c of b.viaCircles.slice(0, 2)) {

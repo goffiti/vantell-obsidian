@@ -20,6 +20,8 @@ interface RegistryManifest {
   via_circles?: string[];
   /** The owner's disclosure ceiling — questions above it raise a knock. */
   max_level?: number;
+  /** Owner-written "what you can ask me" blurb from their manifest. */
+  about?: string;
 }
 
 interface Colleague {
@@ -30,6 +32,8 @@ interface Colleague {
   viaCircles: string[];
   /** Their disclosure ceiling — the relay raises a knock above this. */
   maxLevel: number;
+  /** Their "what you can ask me" blurb (may be empty). */
+  about: string;
 }
 
 function nameFromDid(did: string): string {
@@ -75,6 +79,7 @@ export class KnockComposerModal extends Modal {
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
           viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
           maxLevel: typeof m.max_level === 'number' ? m.max_level : 2,
+          about: typeof m.about === 'string' ? m.about : '',
         }));
     } catch (err) {
       this.contentEl.empty();
@@ -132,6 +137,10 @@ export class KnockComposerModal extends Modal {
     });
 
     const sel = this.colleagues.find((c) => c.did === this.toDid);
+    // Remote-authored text: rendered inert via text, per the quarantine rule.
+    if (sel?.about) {
+      el.createEl('p', { cls: 'vantell-sub', text: `In their words: ${sel.about}` });
+    }
     new Setting(el)
       .setName('Topic')
       .setDesc(
@@ -246,6 +255,7 @@ export class AnswerModal extends Modal {
     private fromName: string,
     private topic: string | null,
     private summary: string,
+    private sources: string[] = [],
   ) {
     super(app);
   }
@@ -256,6 +266,12 @@ export class AnswerModal extends Modal {
     el.createEl('h2', { text: `${this.fromName} answered` });
     if (this.topic) el.createEl('p', { cls: 'vantell-sub', text: `Topic: ${this.topic}` });
     el.createEl('blockquote', { text: this.summary, cls: 'vantell-inert-quote' });
+    if (this.sources.length > 0) {
+      el.createEl('p', {
+        cls: 'vantell-sub',
+        text: `From their notes (titles only — the notes stay in their vault): ${this.sources.join(' · ')}`,
+      });
+    }
     new Setting(el).addButton((b) => b.setButtonText('Close').setCta().onClick(() => this.close()));
   }
 
@@ -297,6 +313,12 @@ export class AnswersListModal extends Modal {
         text: `${a.fromName}${a.topic ? ` · ${a.topic}` : ''}${when ? ` · ${when}` : ''}`,
       });
       card.createEl('blockquote', { text: a.summary, cls: 'vantell-inert-quote' });
+      if (a.sources && a.sources.length > 0) {
+        card.createEl('p', {
+          cls: 'vantell-sub',
+          text: `From their notes: ${a.sources.join(' · ')}`,
+        });
+      }
     }
   }
 

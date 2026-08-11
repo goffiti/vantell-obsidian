@@ -172,6 +172,7 @@ export default class VantellPlugin extends Plugin {
             fromName: a.fromName,
             topic: a.topic,
             summary: a.summary,
+            sources: a.sources,
             at: new Date().toISOString(),
           })),
           ...this.data.receivedAnswers,
@@ -187,7 +188,7 @@ export default class VantellPlugin extends Plugin {
             `${a.fromName} answered your knock${a.topic ? ` about ${a.topic}` : ''} — see "Answers to my knocks".`,
             8000,
           );
-          new AnswerModal(this.app, a.fromName, a.topic, a.summary).open();
+          new AnswerModal(this.app, a.fromName, a.topic, a.summary, a.sources).open();
         }
       }
       const openReqs = requests.filter((r) => r.consent !== 'denied');
