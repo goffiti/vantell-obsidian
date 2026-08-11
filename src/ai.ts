@@ -23,6 +23,7 @@ import {
   matchDefaultVisibility,
   noteTopicLabels,
   parseFrontmatter,
+  pathMatches,
   resolveDefaultVisibility,
   MALFORMED,
 } from '@vantell/vaultscan-core';
@@ -158,7 +159,21 @@ export async function gatherDraftSources(app: App, topic: string | null): Promis
     mtime: number;
   }
   const all: Scored[] = [];
+  let seen = 0;
   for (const rel of await fp.listMarkdown()) {
+    // Categorical path rules need no file read — in capture-heavy vaults
+    // (hundreds of thousands of mail/transcript .md files) this prefilter
+    // is the difference between instant and minutes-long.
+    if (
+      pathMatches(rel, cfg.capture_paths ?? []) ||
+      pathMatches(rel, cfg.person_paths ?? []) ||
+      pathMatches(rel, cfg.exclude_paths ?? [])
+    ) {
+      continue;
+    }
+    // Yield so the modal keeps painting while we scan.
+    seen += 1;
+    if (seen % 50 === 0) await new Promise((r) => window.setTimeout(r, 0));
     let text: string;
     try {
       text = await fp.read(rel);

@@ -15,6 +15,7 @@ import {
   buildPastePrompt,
   draftAnswer,
   gatherDraftSources,
+  type DraftGather,
   hasApiKey,
   AiError,
   type DraftSource,
@@ -369,6 +370,9 @@ export class ComposeAnswerModal extends Modal {
   /** After an automatic draft: the exact notes that were sent, as a visible
    * record — not a regathered list that could diverge. */
   private sentRecordEl: HTMLElement | null = null;
+  /** One vault scan per modal, shared by the source list and both drafting
+   * paths — never re-scan, and NEVER make the answer UI wait on it. */
+  private gatherPromise: Promise<DraftGather> | null = null;
 
   constructor(
     app: App,
@@ -422,32 +426,11 @@ export class ComposeAnswerModal extends Modal {
     // Where the copy-paste prompt panel renders when built.
     this.promptHost = el.createDiv();
     this.sentRecordEl = el.createEl('p', { cls: 'vantell-fineprint' });
+    const sourcesHost = el.createDiv();
 
-    const { notes: sources } = await gatherDraftSources(this.app, r.topic);
-    if (sources.length > 0) {
-      el.createEl('p', {
-        cls: 'vantell-sub',
-        text:
-          'Your shareable notes for reference — open any, and tick the ones whose TITLE ' +
-          'may be listed as a source (titles only, never contents):',
-      });
-      const list = el.createDiv({ cls: 'vantell-folder-list' });
-      for (const s of sources) {
-        const row = new Setting(list).setName(s.title);
-        row.addButton((b) =>
-          b.setButtonText('Open').onClick(() => {
-            void this.app.workspace.openLinkText(s.rel, '/', true);
-          }),
-        );
-        row.addToggle((t) =>
-          t.setValue(false).onChange((v) => {
-            if (v) this.selectedSources.add(s.title);
-            else this.selectedSources.delete(s.title);
-          }),
-        );
-      }
-    }
-
+    // Send/Cancel render BEFORE the vault scan: answering must never wait
+    // on note gathering (a capture-heavy vault can take a while even with
+    // the path prefilter).
     new Setting(el)
       .addButton((b) =>
         b
@@ -456,6 +439,41 @@ export class ComposeAnswerModal extends Modal {
           .onClick(() => void this.send()),
       )
       .addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));
+
+    const scanNote = sourcesHost.createEl('p', {
+      cls: 'vantell-sub',
+      text: 'Scanning your shareable notes…',
+    });
+    this.gatherPromise = gatherDraftSources(this.app, r.topic);
+    this.gatherPromise
+      .then(({ notes: sources }) => {
+        if (sources.length === 0) {
+          scanNote.setText('No shareable notes yet — write the answer in your own words.');
+          return;
+        }
+        scanNote.setText(
+          'Your shareable notes for reference — open any, and tick the ones whose TITLE ' +
+            'may be listed as a source (titles only, never contents):',
+        );
+        const list = sourcesHost.createDiv({ cls: 'vantell-folder-list' });
+        for (const s of sources) {
+          const row = new Setting(list).setName(s.title);
+          row.addButton((b) =>
+            b.setButtonText('Open').onClick(() => {
+              void this.app.workspace.openLinkText(s.rel, '/', true);
+            }),
+          );
+          row.addToggle((t) =>
+            t.setValue(false).onChange((v) => {
+              if (v) this.selectedSources.add(s.title);
+              else this.selectedSources.delete(s.title);
+            }),
+          );
+        }
+      })
+      .catch(() => {
+        scanNote.setText('Could not scan your notes — you can still write and send the answer.');
+      });
   }
 
   override onClose(): void {
@@ -466,15 +484,17 @@ export class ComposeAnswerModal extends Modal {
     if (!this.promptHost) return;
     const host = this.promptHost;
     host.empty();
+    host.createEl('p', { cls: 'vantell-sub', text: 'Building the prompt from your shareable notes…' });
     let sources: DraftSource[] = [];
     let topicMatched = false;
     try {
-      const gathered = await gatherDraftSources(this.app, r.topic);
+      const gathered = await (this.gatherPromise ?? gatherDraftSources(this.app, r.topic));
       sources = gathered.notes;
       topicMatched = gathered.topicMatched;
     } catch {
       sources = [];
     }
+    host.empty();
     if (sources.length === 0) {
       host.createEl('p', {
         cls: 'vantell-sub',
@@ -552,7 +572,8 @@ export class ComposeAnswerModal extends Modal {
     this.busy = true;
     const notice = new Notice('Drafting from your notes…', 0);
     try {
-      const { notes, topicMatched } = await gatherDraftSources(this.app, r.topic);
+      const { notes, topicMatched } = await (this.gatherPromise ??
+        gatherDraftSources(this.app, r.topic));
       const text = await draftAnswer(this.app, this.plugin.data.aiModel, {
         question: r.question,
         topic: r.topic,
