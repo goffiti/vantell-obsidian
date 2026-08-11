@@ -18,6 +18,8 @@ interface RegistryManifest {
   display_name?: string;
   topics?: { label?: string }[];
   via_circles?: string[];
+  /** The owner's disclosure ceiling — questions above it raise a knock. */
+  max_level?: number;
 }
 
 interface Colleague {
@@ -26,6 +28,8 @@ interface Colleague {
   topics: string[];
   /** Reached through the owner's circles (cross-org) rather than the org. */
   viaCircles: string[];
+  /** Their disclosure ceiling — the relay raises a knock above this. */
+  maxLevel: number;
 }
 
 function nameFromDid(did: string): string {
@@ -70,6 +74,7 @@ export class KnockComposerModal extends Modal {
           name: m.display_name || nameFromDid(m.did!),
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
           viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
+          maxLevel: typeof m.max_level === 'number' ? m.max_level : 2,
         }));
     } catch (err) {
       this.contentEl.empty();
@@ -154,7 +159,11 @@ export class KnockComposerModal extends Modal {
 
     new Setting(el)
       .setName('Depth')
-      .setDesc('Level 3 raises a knock they approve. Level 0–2 is lighter.')
+      .setDesc(
+        sel
+          ? `Their ceiling is L${sel.maxLevel}: anything above it raises a knock they approve; up to L${sel.maxLevel} is lighter.`
+          : 'Levels above their ceiling raise a knock they approve.',
+      )
       .addDropdown((d) => {
         d.addOption('3', 'Level 3 — needs their yes')
           .addOption('2', 'Level 2 — abstract')
