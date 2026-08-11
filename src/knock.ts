@@ -17,12 +17,15 @@ interface RegistryManifest {
   did?: string;
   display_name?: string;
   topics?: { label?: string }[];
+  via_circles?: string[];
 }
 
 interface Colleague {
   did: string;
   name: string;
   topics: string[];
+  /** Reached through the owner's circles (cross-org) rather than the org. */
+  viaCircles: string[];
 }
 
 function nameFromDid(did: string): string {
@@ -66,6 +69,7 @@ export class KnockComposerModal extends Modal {
           did: m.did!,
           name: m.display_name || nameFromDid(m.did!),
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
+          viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
         }));
     } catch (err) {
       this.contentEl.empty();
@@ -107,7 +111,12 @@ export class KnockComposerModal extends Modal {
 
     new Setting(el).setName('Who').addDropdown((d) => {
       for (const c of this.colleagues) {
-        d.addOption(c.did, `${c.name}${c.topics.length ? ` — ${c.topics.slice(0, 4).join(', ')}` : ''}`);
+        d.addOption(
+          c.did,
+          `${c.name}${
+            c.topics.length ? ` — ${c.topics.slice(0, 4).join(', ')}` : ' — nothing published yet'
+          }${c.viaCircles.length ? ` · via ${c.viaCircles[0]}` : ''}`,
+        );
       }
       d.setValue(this.toDid).onChange((v) => {
         this.toDid = v;
@@ -120,7 +129,13 @@ export class KnockComposerModal extends Modal {
     const sel = this.colleagues.find((c) => c.did === this.toDid);
     new Setting(el)
       .setName('Topic')
-      .setDesc(sel && sel.topics.length ? `They publish: ${sel.topics.join(', ')}` : 'A topic to ask about.')
+      .setDesc(
+        sel && sel.topics.length
+          ? `They publish: ${sel.topics.join(', ')}`
+          : sel && !sel.topics.length
+            ? "They haven't published topics yet — they can still answer, but you're asking blind."
+            : 'A topic to ask about.',
+      )
       .addText((t) => t.setValue(this.topic).onChange((v) => (this.topic = v)));
 
     el.createEl('label', { cls: 'field', text: 'Your question' });

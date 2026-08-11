@@ -23,6 +23,8 @@ interface Brain {
   did: string;
   name: string;
   topics: string[];
+  /** Reached through the owner's circles (cross-org) rather than the org. */
+  viaCircles: string[];
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -110,7 +112,12 @@ export class VantellView extends ItemView {
     // ---- connected brains ----
     try {
       const reg = await signedGet<{
-        manifests: { did?: string; display_name?: string; topics?: { label?: string }[] }[];
+        manifests: {
+          did?: string;
+          display_name?: string;
+          topics?: { label?: string }[];
+          via_circles?: string[];
+        }[];
       }>(ident, this.plugin.data.apiBase, '/v1/registry');
       this.brains = (reg.manifests ?? [])
         .filter((m) => m.did && m.did !== ident.did)
@@ -118,6 +125,7 @@ export class VantellView extends ItemView {
           did: m.did!,
           name: m.display_name || (m.did!.split(':').pop() ?? m.did!),
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
+          viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
         }));
     } catch {
       /* keep last brains */
@@ -232,7 +240,16 @@ export class VantellView extends ItemView {
         head.createSpan({ cls: 'vantell-brain-name', text: b.name });
         const chips = card.createDiv({ cls: 'vantell-chips' });
         for (const t of b.topics.slice(0, 6)) chips.createSpan({ cls: 'vantell-chip', text: t });
-        if (b.topics.length === 0) chips.createSpan({ cls: 'vantell-sub', text: 'no topics yet' });
+        for (const c of b.viaCircles.slice(0, 2)) {
+          chips.createSpan({
+            cls: 'vantell-chip',
+            text: `◦ ${c}`,
+            title: `In your circle '${c}' — outside your org`,
+          });
+        }
+        if (b.topics.length === 0) {
+          chips.createSpan({ cls: 'vantell-sub', text: 'enrolled — nothing published yet' });
+        }
         const kn = card.createEl('button', { cls: 'vantell-brain-knock', text: 'Knock' });
         kn.onclick = () => new KnockComposerModal(this.plugin.app, this.plugin, b.did).open();
       }
