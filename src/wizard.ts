@@ -313,16 +313,22 @@ export class SetupWizard extends Modal {
       }
       card.createEl('p', {
         cls: 'vantell-fineprint',
-        text: 'Topic labels and counts only. Never note contents, never titles you didn\'t share.',
+        text: 'Topic labels and counts only — never note contents.',
       });
     }
 
     card.createEl('h3', { text: 'Your dashboard will show' });
     const dash = card.createEl('ul');
     for (const f of s.namedFolders) {
-      dash.createEl('li', {
+      const li = dash.createEl('li', {
         text: `${f.name}/ — ${f.notes.toLocaleString()} note${f.notes === 1 ? '' : 's'}`,
       });
+      if (f.sampleTitles.length > 0) {
+        li.createDiv({
+          cls: 'vantell-fineprint',
+          text: `sample titles sent: ${f.sampleTitles.map((t) => `“${t}”`).join(' · ')}`,
+        });
+      }
     }
     if (s.unchosenNotes > 0) {
       dash.createEl('li', {

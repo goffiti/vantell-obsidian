@@ -47,11 +47,18 @@ export default class VantellPlugin extends Plugin {
     this.refreshStatusBar();
 
     // Presence: poll the inbox while Obsidian is open. First check shortly
-    // after layout; then every 2 minutes.
+    // after layout; then roughly every 2 minutes, JITTERED — a fixed-cadence
+    // signed poll is a precise presence beacon (working hours, absence) for
+    // anyone holding server logs; ±30s of jitter blurs the edges (P-D1).
     this.app.workspace.onLayoutReady(() => {
       window.setTimeout(() => void this.pollInbox(true), 3000);
+      let nextPollAt = Date.now() + INBOX_POLL_MS + Math.random() * 30_000;
       this.registerInterval(
-        window.setInterval(() => void this.pollInbox(false), INBOX_POLL_MS),
+        window.setInterval(() => {
+          if (Date.now() < nextPollAt) return;
+          nextPollAt = Date.now() + INBOX_POLL_MS - 15_000 + Math.random() * 60_000;
+          void this.pollInbox(false);
+        }, 15_000),
       );
     });
 

@@ -46,7 +46,9 @@ export async function scanVault(app: App): Promise<VaultScanContext> {
  * folders, where it caught notes the owner might have expected to share. */
 export interface ReviewSummary {
   topics: { label: string; notes: number }[];
-  namedFolders: { name: string; notes: number }[];
+  /** sampleTitles ride the vault report (up to 3 per folder) — the review
+   * must show them, because they leave the vault (SEC-12). */
+  namedFolders: { name: string; notes: number; sampleTitles: string[] }[];
   /** Everything not chosen — unpicked + locked + excluded, one number. */
   unchosenNotes: number;
   /** Capture/person/excluded notes INSIDE chosen folders — the safety net. */
@@ -73,7 +75,11 @@ export function summarize(result: ScanResult): ReviewSummary {
     );
   return {
     topics: ts.topics.map((t) => ({ label: t.label, notes: t.notes })),
-    namedFolders: named.map((f) => ({ name: f.path, notes: f.note_count })),
+    namedFolders: named.map((f) => ({
+      name: f.path,
+      notes: f.note_count,
+      sampleTitles: [...f.sample_titles],
+    })),
     unchosenNotes: aggregated.reduce((acc, f) => acc + f.note_count, 0),
     protectedInChosen,
     shareableNotes: ts.stats.shareable_notes,

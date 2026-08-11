@@ -18,6 +18,7 @@
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
 import { CONFIG_FILENAME, stripShareFrontmatter } from '@vantell/vaultscan-core';
+import { saveApiKey } from './ai';
 import { signedPost } from './api';
 import { clearIdentity, loadIdentity } from './identity';
 import { makeObsidianProvider } from './provider';
@@ -83,6 +84,9 @@ async function executeSweep(app: App, plugin: VantellPlugin, plan: SweepPlan): P
     }
   }
   clearIdentity(app);
+  // The Anthropic API key is a live, billable third-party credential — it
+  // must not outlive the plugin (SEC-6).
+  saveApiKey(app, null);
   plugin.data = { ...DEFAULT_DATA };
   await plugin.saveData(plugin.data);
   plugin.refreshStatusBar();
@@ -134,6 +138,9 @@ export class UninstallModal extends Modal {
         : 'No .vantell.yml found — nothing to delete there.',
     });
     ul.createEl('li', { text: "This device's signing key will be deleted (publishing stops)." });
+    ul.createEl('li', {
+      text: 'Your Anthropic API key (if you set one for drafting) will be deleted from this device.',
+    });
     const linked = Boolean(loadIdentity(this.app)?.did);
     if (linked) {
       ul.createEl('li', {

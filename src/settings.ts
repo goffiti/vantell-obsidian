@@ -76,8 +76,10 @@ export class VantellSettingTab extends PluginSettingTab {
       {
         name: 'What leaves this vault',
         desc:
-          'Topic labels and counts from folders you chose, and the names of those folders — ' +
-          'nothing else. Note contents never leave. The full list is in the plugin README.',
+          'Topic labels, note counts, the names of folders you chose, and up to three sample ' +
+          'note titles per chosen folder (shown in the review). Note contents leave only if ' +
+          'you enable automatic drafting below — and then only to your own AI account, never ' +
+          'to Vantell. The full list is in the plugin README.',
       },
       {
         name: 'Unlink this device',

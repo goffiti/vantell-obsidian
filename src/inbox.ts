@@ -361,6 +361,9 @@ export class ComposeAnswerModal extends Modal {
   private selectedSources = new Set<string>();
   private busy = false;
   private promptHost: HTMLElement | null = null;
+  /** After an automatic draft: the exact notes that were sent, as a visible
+   * record — not a regathered list that could diverge. */
+  private sentRecordEl: HTMLElement | null = null;
 
   constructor(
     app: App,
@@ -413,6 +416,7 @@ export class ComposeAnswerModal extends Modal {
     }
     // Where the copy-paste prompt panel renders when built.
     this.promptHost = el.createDiv();
+    this.sentRecordEl = el.createEl('p', { cls: 'vantell-fineprint' });
 
     const { notes: sources } = await gatherDraftSources(this.app, r.topic);
     if (sources.length > 0) {
@@ -543,7 +547,7 @@ export class ComposeAnswerModal extends Modal {
     this.busy = true;
     const notice = new Notice('Drafting from your notes…', 0);
     try {
-      const { notes } = await gatherDraftSources(this.app, r.topic);
+      const { notes, topicMatched } = await gatherDraftSources(this.app, r.topic);
       const text = await draftAnswer(this.app, this.plugin.data.aiModel, {
         question: r.question,
         topic: r.topic,
@@ -554,7 +558,14 @@ export class ComposeAnswerModal extends Modal {
       this.summary = text;
       // The notes that informed the draft are the natural source list.
       for (const s of notes) this.selectedSources.add(s.title);
-      new Notice('Draft ready — review and edit before sending. Nothing was sent yet.');
+      // The record of exactly what left: the same `notes` array the API call
+      // used, not a regathered list.
+      this.sentRecordEl?.setText(
+        `Sent to your Anthropic account for this draft` +
+          `${topicMatched ? '' : ' (nothing matched the topic — used your most recent shareable notes)'}: ` +
+          notes.map((s) => s.title).join(' · '),
+      );
+      new Notice('Draft ready — review and edit before sending. Nothing was sent to the asker yet.');
     } catch (err) {
       new Notice(
         err instanceof AiError

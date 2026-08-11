@@ -1,15 +1,25 @@
 /**
- * Network layer — the complete list of calls this plugin can make, all to
- * the Vantell API, all via Obsidian's requestUrl (cross-platform, no CORS):
+ * Network layer — every Vantell API route this plugin can call, all via
+ * Obsidian's requestUrl (cross-platform, no CORS). This list is checked
+ * against the source by scripts/check_routes.mjs (npm run lint), so it
+ * cannot silently go stale:
  *
- *   POST /v1/pair/claim    — once per device: pairing code + public key
- *   POST /v1/manifest      — going live / updating (DID-signed)
- *   POST /v1/vault-report  — going live / updating (DID-signed)
+ *   POST /v1/pair/claim       — once per device: pairing code + public key
+ *   POST /v1/manifest         — going live / updating (DID-signed)
+ *   POST /v1/vault-report     — going live / updating (DID-signed)
+ *   GET  /v1/inbox            — the 2-min poll for incoming envelopes (signed)
+ *   GET  /v1/registry         — the connected-brains list for the panel (signed)
+ *   GET  /v1/agent/knocks     — consent state for incoming knocks (signed)
+ *   POST /v1/agent/knocks/{id}/respond — approve/deny a knock (signed)
+ *   POST /v1/envelope         — send a knock or an answer (signed)
+ *   POST /v1/unpublish        — take the listing off the mesh (signed)
  *
- * Nothing else. Payloads are built by @vantell/vaultscan-core from the
+ * The AI drafting path additionally calls api.anthropic.com from ai.ts —
+ * only on the optional API-key path, never through this module.
+ * Publish payloads are built by @vantell/vaultscan-core from the
  * transmit-safe scan output only — note contents have no field to ride in.
  */
-import { requestUrl } from 'obsidian';
+import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from 'obsidian';
 import { didHeaders } from '@vantell/vaultscan-core';
 import type { StoredIdentity } from './identity';
 
@@ -26,6 +36,22 @@ export class ApiError extends Error {
 
 function apiBase(ident: { api?: string } | null, fallback: string): string {
   return (ident?.api ?? fallback).replace(/\/+$/, '');
+}
+
+/** requestUrl with an upper bound on waiting (SEC-8): a slow or hostile
+ * endpoint must not hang the plugin. The underlying request is not aborted
+ * (requestUrl has no cancellation), but callers get a clean failure. */
+const REQUEST_TIMEOUT_MS = 20_000;
+function timedRequest(params: RequestUrlParam): Promise<RequestUrlResponse> {
+  return Promise.race([
+    requestUrl(params),
+    new Promise<never>((_, reject) => {
+      window.setTimeout(
+        () => reject(new ApiError('The server did not respond within 20 seconds.', 0)),
+        REQUEST_TIMEOUT_MS,
+      );
+    }),
+  ]);
 }
 
 /** UTF-8-safe base64 for envelope payloads (bare btoa/atob is Latin-1 only
@@ -51,7 +77,7 @@ export async function claimPairingCode(
   code: string,
   pubkey: string,
 ): Promise<{ did: string; api: string }> {
-  const res = await requestUrl({
+  const res = await timedRequest({
     url: `${apiBase(null, base)}/v1/pair/claim`,
     method: 'POST',
     contentType: 'application/json',
@@ -87,7 +113,7 @@ export async function signedGet<T>(
     ident.private_key_b64,
     ident.did,
   );
-  const res = await requestUrl({
+  const res = await timedRequest({
     url: `${apiBase(ident, fallbackBase)}${path}`,
     method: 'GET',
     headers,
@@ -125,7 +151,7 @@ export async function signedPost(
   const bodyText = JSON.stringify(payload);
   const bodyBytes = new TextEncoder().encode(bodyText);
   const headers = await didHeaders('POST', path, bodyBytes, ident.private_key_b64, ident.did);
-  const res = await requestUrl({
+  const res = await timedRequest({
     url: `${apiBase(ident, fallbackBase)}${path}`,
     method: 'POST',
     contentType: 'application/json',

@@ -21,17 +21,17 @@ Click the **radio icon** in the left ribbon (or run the “Open the panel” com
 
 ## What leaves your vault — the complete list
 
-This plugin makes exactly two kinds of network calls, both to `api.vantell.ai`, both shown to you before they happen:
+All of this plugin's network requests go to `api.vantell.ai` (or the server you configured). The complete route list sits at the top of `src/api.ts` and is checked against the source by a lint, so it cannot silently drift. What is *sent* falls into the rows below, each shown to you before it happens:
 
 | When | What is sent |
 |---|---|
 | Linking (once per device) | Your one-time code + this device's public key |
-| Going live / updating | Topic labels, note counts, the names of folders **you chose**, and a signed timestamp |
+| Going live / updating | Topic labels, note counts, the names of folders **you chose**, up to **three sample note titles per chosen folder** (displayed verbatim in the pre-publish review), and a signed timestamp |
 | While Obsidian is open (every 2 min) | A signed **check for incoming requests** — an empty-bodied read of your own inbox and consent state. Nothing about your vault is sent |
 | When you answer a request | **Only the text you typed** in the answer box, plus the titles you explicitly ticked as sources — after you approved the request on your dashboard |
 | If you turn on AI drafting *(off by default)* | The text of shareable notes matching the request's topic, sent to **your own Anthropic account** with **your** API key — never to Vantell, never to the person who asked. See below |
 
-Never sent: note contents (except AI drafting, below), note titles (unless you explicitly share a note or tick one as an answer source), names of unchosen folders (they're reported only as one anonymous total), file paths, or any telemetry. Incoming requests are displayed as inert text and never written into your vault or executed.
+Never sent: note contents (except AI drafting, below), note titles beyond the per-folder samples above and the ones you explicitly tick as answer sources, names of unchosen folders (they're reported only as one anonymous total), file paths, or any telemetry. Incoming requests are displayed as inert text and never written into your vault or executed.
 
 **Links the plugin opens** (in your browser, with nothing attached): `app.vantell.ai` — your dashboard, for pairing codes and knock approvals — and `claude.ai`, an optional shortcut offered by the paste-bridge drafting path. These two domains appear in the code only as links; the plugin's network *requests* go exclusively to `api.vantell.ai` (or the server you configured).
 
@@ -59,6 +59,8 @@ No — with one deliberate, visible exception. Your folder choices are saved to 
 
 - Your device signs its requests with a key generated locally (Ed25519). The key is stored **device-locally** and is never synced with your vault — not through Obsidian Sync, iCloud, or git — and never written into any note or plugin data file.
 - No password is ever entered in the plugin. Linking uses a single-use code that expires in 60 minutes.
+- **Honest limitation:** knock and answer envelopes currently transit the relay base64-encoded, **not end-to-end encrypted** — the relay operator could technically read question and answer text. Sealing envelopes to the recipient's key (as the [Knock Protocol](https://vantell.ai/protocol/) specifies) is on the roadmap; until it ships, treat Q&A text as visible to your Vantell server's operator.
+- **Honest limitation:** the signing key and the optional Anthropic key are stored device-locally, protected by your OS user account — not in an OS keychain. Obsidian plugins are not sandboxed from one another, so anything running as you (including other plugins) could read them. Both are deleted by "Remove Vantell from this vault".
 - The plugin's full source — including the vault scanner (`vaultscan-core`) — is public: [github.com/goffiti/vantell-obsidian](https://github.com/goffiti/vantell-obsidian). Audit it, or ask your own AI to.
 
 ## Requirements & disclosures
@@ -69,4 +71,4 @@ No — with one deliberate, visible exception. Your folder choices are saved to 
 
 ## For teams
 
-Vantell implements the [Knock Protocol](https://vantell.ai): colleagues' requests to go deeper than topic labels arrive as *knocks* you explicitly approve or deny, with consent receipts and a content-free audit trail. Your org admin sees metadata only — never contents, never question texts.
+Vantell implements the [Knock Protocol](https://vantell.ai): colleagues' requests to go deeper than topic labels arrive as *knocks* you explicitly approve or deny, with consent receipts and a content-free audit trail. Your **org admin** sees metadata only — never contents, never question texts. (The relay *operator* can currently read Q&A envelopes until end-to-end sealing ships — see the limitation under Security.)
