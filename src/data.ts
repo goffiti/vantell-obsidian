@@ -1,8 +1,14 @@
 /**
- * Plugin data (data.json) — SYNCS with the vault, so nothing secret may
- * ever land here. The signing key lives in device-local storage
- * (src/identity.ts); this file holds only preferences and the last
- * published summary (already-public metadata).
+ * Two stores, two labels (doc/trust-architecture.md §3):
+ *
+ *   - VantellData → data.json. SYNCS WITH THE VAULT, so it may hold only
+ *     benign preferences and already-public metadata. Conversation content,
+ *     cursors, and anything per-device is FORBIDDEN here — enforced by
+ *     scripts/check_flows.mjs, not just this comment.
+ *   - DeviceState → device-local storage (same mechanism as the signing
+ *     key). Never syncs, never enters the vault, dies with the device.
+ *     This is where the mesh lives: envelopes, answers, knocks, cursor,
+ *     and the API base (a synced base would be a tamper path — SEC-3).
  */
 import type { PublishedRecord } from './publish';
 
@@ -13,6 +19,8 @@ export interface StoredEnvelope {
   from: string;
   ciphertext: string;
   created_at: string;
+  /** 'sealed' = crypto_box_seal to this device's key; absent = legacy b64. */
+  enc?: string;
 }
 
 /** An answer received to one of the owner's knocks — kept so it can be
@@ -36,36 +44,83 @@ export interface SentKnock {
   status: 'sent' | 'answered';
 }
 
-export interface VantellData {
-  displayName: string;
-  /** Advanced: API base for linking (pinned per-device at pair time). */
+/** L-DEVICE: per-device mesh state. Device-local storage ONLY. */
+export interface DeviceState {
+  /** Advanced: API base for linking (the pin from pairing lives on the
+   * identity; this is the pre-pairing fallback — device-local so vault
+   * sync can never redirect another device). */
   apiBase: string;
-  lastPublished?: PublishedRecord;
   /** Inbox cursor — created_at of the newest envelope ever ingested. */
   inboxCursor?: string;
   /** Envelopes answered/dismissed — never re-surfaced. Capped list. */
   handledEnvelopes: string[];
   /** Ingested but unresolved envelopes (open requests). */
   pendingEnvelopes: StoredEnvelope[];
-  /** Anthropic model for optional "Draft from my notes" (non-secret; the API
-   * key itself lives in device-local storage, never here). */
-  aiModel: string;
-  /** True once the owner has acknowledged that drafting sends shareable-note
-   * text to their own Anthropic account. Gates the first draft. */
-  aiDraftConsented: boolean;
   /** Answers received to the owner's knocks — newest first, capped. */
   receivedAnswers: ReceivedAnswer[];
   /** Knocks the owner has sent — newest first, capped. */
   sentKnocks: SentKnock[];
 }
 
-export const DEFAULT_DATA: VantellData = {
-  displayName: '',
+export const DEFAULT_DEVICE: DeviceState = {
   apiBase: 'https://api.vantell.ai',
   handledEnvelopes: [],
   pendingEnvelopes: [],
-  aiModel: 'claude-opus-5',
-  aiDraftConsented: false,
   receivedAnswers: [],
   sentKnocks: [],
 };
+
+/** L-VAULTCFG-adjacent: preferences and already-public metadata only. */
+export interface VantellData {
+  displayName: string;
+  lastPublished?: PublishedRecord;
+  /** Anthropic model for optional "Draft from my notes" (non-secret; the API
+   * key itself lives in device-local storage, never here). */
+  aiModel: string;
+  /** True once the owner has acknowledged that drafting sends shareable-note
+   * text to their own Anthropic account. Gates the first draft. */
+  aiDraftConsented: boolean;
+}
+
+export const DEFAULT_DATA: VantellData = {
+  displayName: '',
+  aiModel: 'claude-opus-5',
+  aiDraftConsented: false,
+};
+
+/** One-time migration (pre-0.9.0 data.json carried the mesh): lift legacy
+ * fields into DeviceState and report whether data.json needs rewriting. */
+export function migrateLegacyData(
+  raw: Record<string, unknown>,
+  device: DeviceState,
+): { device: DeviceState; hadLegacy: boolean } {
+  const legacyKeys = [
+    'apiBase',
+    'inboxCursor',
+    'handledEnvelopes',
+    'pendingEnvelopes',
+    'receivedAnswers',
+    'sentKnocks',
+  ] as const;
+  const hadLegacy = legacyKeys.some((k) => k in raw);
+  if (!hadLegacy) return { device, hadLegacy };
+  const merged: DeviceState = {
+    apiBase:
+      typeof raw['apiBase'] === 'string' && raw['apiBase'] ? raw['apiBase'] : device.apiBase,
+    inboxCursor:
+      typeof raw['inboxCursor'] === 'string' ? raw['inboxCursor'] : device.inboxCursor,
+    handledEnvelopes: Array.isArray(raw['handledEnvelopes'])
+      ? (raw['handledEnvelopes'] as string[])
+      : device.handledEnvelopes,
+    pendingEnvelopes: Array.isArray(raw['pendingEnvelopes'])
+      ? (raw['pendingEnvelopes'] as StoredEnvelope[])
+      : device.pendingEnvelopes,
+    receivedAnswers: Array.isArray(raw['receivedAnswers'])
+      ? (raw['receivedAnswers'] as ReceivedAnswer[])
+      : device.receivedAnswers,
+    sentKnocks: Array.isArray(raw['sentKnocks'])
+      ? (raw['sentKnocks'] as SentKnock[])
+      : device.sentKnocks,
+  };
+  return { device: merged, hadLegacy };
+}

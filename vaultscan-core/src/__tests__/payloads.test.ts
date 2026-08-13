@@ -102,7 +102,10 @@ describe('DID request signing (CONTRACTS.md)', () => {
     expect(h['X-Knock-Did']).toBe(DID);
     expect(h['X-Knock-Timestamp']).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     expect(h['X-Knock-Body-Sha256']).toBe(await sha256Hex(body));
-    const msg = `POST\n/v1/vault-report\n${h['X-Knock-Timestamp']}\n${h['X-Knock-Body-Sha256']}`;
+    // Since 0.9.0 the signature covers the FULL path INCLUDING the query
+    // (SEC-15, CONTRACTS.md) — the server dual-accepts the legacy stripped
+    // form during migration.
+    const msg = `POST\n/v1/vault-report?x=1\n${h['X-Knock-Timestamp']}\n${h['X-Knock-Body-Sha256']}`;
     const ok = await ed.verifyAsync(
       b64ToBytes(h['X-Knock-Signature']!),
       new TextEncoder().encode(msg),

@@ -33,6 +33,7 @@
   },
   "include": [
     "src",
-    "types"
+    "types",
+    "vaultscan-core/types"
   ]
 }

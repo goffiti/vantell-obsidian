@@ -18,6 +18,7 @@ export * from './classify';
 export * from './mark';
 export * from './autoProtected';
 export * from './identity';
+export * from './sealbox';
 export * from './publishPayloads';
 export * from './memoryProvider';
 export * from './demoVault';

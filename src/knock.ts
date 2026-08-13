@@ -8,7 +8,7 @@
  * poll (see main.ts / inbox.ts).
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { signedGet, signedPost, utf8ToBase64 } from './api';
+import { encodeEnvelope, signedGet, signedPost } from './api';
 import { loadIdentity } from './identity';
 import type { ReceivedAnswer } from './data';
 import type VantellPlugin from './main';
@@ -22,6 +22,8 @@ interface RegistryManifest {
   max_level?: number;
   /** Owner-written "what you can ask me" blurb from their manifest. */
   about?: string;
+  /** Their device-published Ed25519 pubkey — what we seal envelopes to. */
+  pubkey?: string;
 }
 
 interface Colleague {
@@ -34,6 +36,8 @@ interface Colleague {
   maxLevel: number;
   /** Their "what you can ask me" blurb (may be empty). */
   about: string;
+  /** Ed25519 pubkey to seal to; '' when they never device-published. */
+  pubkey: string;
 }
 
 function nameFromDid(did: string): string {
@@ -68,7 +72,7 @@ export class KnockComposerModal extends Modal {
     try {
       const reg = await signedGet<{ manifests: RegistryManifest[] }>(
         ident,
-        this.plugin.data.apiBase,
+        this.plugin.device.apiBase,
         '/v1/registry',
       );
       this.colleagues = (reg.manifests ?? [])
@@ -80,6 +84,7 @@ export class KnockComposerModal extends Modal {
           viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
           maxLevel: typeof m.max_level === 'number' ? m.max_level : 2,
           about: typeof m.about === 'string' ? m.about : '',
+          pubkey: typeof m.pubkey === 'string' ? m.pubkey : '',
         }));
     } catch (err) {
       this.contentEl.empty();
@@ -217,15 +222,16 @@ export class KnockComposerModal extends Modal {
         topic: this.topic.trim() || null,
         question: this.question.trim(),
       };
-      await signedPost(ident, this.plugin.data.apiBase, '/v1/envelope', {
+      const recipient = this.colleagues.find((c) => c.did === this.toDid);
+      await signedPost(ident, this.plugin.device.apiBase, '/v1/envelope', {
         to: this.toDid,
-        ciphertext: utf8ToBase64(JSON.stringify(query)),
+        ...encodeEnvelope(query, recipient?.pubkey || null),
         level: this.level,
         topic: this.topic.trim() || undefined,
         purpose: this.purpose.trim(),
       });
       const who = this.colleagues.find((c) => c.did === this.toDid)?.name ?? 'them';
-      this.plugin.data.sentKnocks = [
+      this.plugin.device.sentKnocks = [
         {
           toDid: this.toDid,
           toName: who,
@@ -234,9 +240,9 @@ export class KnockComposerModal extends Modal {
           at: new Date().toISOString(),
           status: 'sent' as const,
         },
-        ...this.plugin.data.sentKnocks,
+        ...this.plugin.device.sentKnocks,
       ].slice(0, 50);
-      await this.plugin.saveData(this.plugin.data);
+      this.plugin.saveDevice();
       this.plugin.refreshPanel();
       new Notice(`Knock sent to ${who}. You'll be notified here if they answer.`);
       this.close();

@@ -12,21 +12,52 @@ import { RequestsModal, checkInbox, type IncomingRequest } from './inbox';
 import { AnswerModal, AnswersListModal, KnockComposerModal } from './knock';
 import { noteShareState, shareNote, stopSharingNote } from './noteShare';
 import { VANTELL_VIEW, VantellView } from './panel';
-import { DEFAULT_DATA, type VantellData } from './data';
+import {
+  DEFAULT_DATA,
+  DEFAULT_DEVICE,
+  migrateLegacyData,
+  type DeviceState,
+  type VantellData,
+} from './data';
+import { loadLocalJson, saveLocalJson } from './identity';
 import { VantellSettingTab } from './settings';
 import { UninstallModal } from './uninstall';
 import { SetupWizard } from './wizard';
 
 const INBOX_POLL_MS = 2 * 60 * 1000;
 
+const DEVICE_STORE_KEY = 'vantell-device-state';
+
 export default class VantellPlugin extends Plugin {
   data: VantellData = { ...DEFAULT_DATA };
+  /** L-DEVICE mesh state — device-local, never in the synced vault. */
+  device: DeviceState = { ...DEFAULT_DEVICE };
   private statusEl: HTMLElement | null = null;
   private requestCount = 0;
   lastRequests: IncomingRequest[] = [];
 
+  saveDevice(): void {
+    saveLocalJson(this.app, DEVICE_STORE_KEY, this.device);
+  }
+
   override async onload(): Promise<void> {
-    this.data = { ...DEFAULT_DATA, ...((await this.loadData()) as Partial<VantellData> | null) };
+    const raw = ((await this.loadData()) as Record<string, unknown> | null) ?? {};
+    this.data = { ...DEFAULT_DATA, ...(raw as Partial<VantellData>) };
+    const stored = loadLocalJson(this.app, DEVICE_STORE_KEY);
+    if (stored && typeof stored === 'object') {
+      this.device = { ...DEFAULT_DEVICE, ...(stored as Partial<DeviceState>) };
+    }
+    // Pre-0.9.0 data.json carried the mesh (conversation content in a
+    // vault-synced file — the exact leak doc/trust-architecture.md exists
+    // to prevent). Lift it into the device store and rewrite data.json
+    // without it, once.
+    const migrated = migrateLegacyData(raw, this.device);
+    if (migrated.hadLegacy) {
+      this.device = migrated.device;
+      this.saveDevice();
+      this.data = { ...DEFAULT_DATA, displayName: this.data.displayName, lastPublished: this.data.lastPublished, aiModel: this.data.aiModel, aiDraftConsented: this.data.aiDraftConsented };
+      await this.saveData(this.data);
+    }
 
     this.addSettingTab(new VantellSettingTab(this.app, this));
 
@@ -104,7 +135,7 @@ export default class VantellPlugin extends Plugin {
     this.addCommand({
       id: 'answers',
       name: 'Answers to my knocks',
-      callback: () => new AnswersListModal(this.app, this.data.receivedAnswers).open(),
+      callback: () => new AnswersListModal(this.app, this.device.receivedAnswers).open(),
     });
     this.addCommand({
       id: 'uninstall',
@@ -167,7 +198,7 @@ export default class VantellPlugin extends Plugin {
       for (const n of notifications) new Notice(n, 8000);
       if (answers.length > 0) {
         // Persist first, so a missed popup can always be reopened.
-        this.data.receivedAnswers = [
+        this.device.receivedAnswers = [
           ...answers.map((a) => ({
             fromName: a.fromName,
             topic: a.topic,
@@ -175,14 +206,14 @@ export default class VantellPlugin extends Plugin {
             sources: a.sources,
             at: new Date().toISOString(),
           })),
-          ...this.data.receivedAnswers,
+          ...this.device.receivedAnswers,
         ].slice(0, 50);
         // Mark any matching sent knock as answered.
         const answeredFrom = new Set(answers.map((a) => a.fromDid));
-        for (const k of this.data.sentKnocks) {
+        for (const k of this.device.sentKnocks) {
           if (k.status !== 'answered' && answeredFrom.has(k.toDid)) k.status = 'answered';
         }
-        await this.saveData(this.data);
+        this.saveDevice();
         for (const a of answers) {
           new Notice(
             `${a.fromName} answered your knock${a.topic ? ` about ${a.topic}` : ''} — see "Answers to my knocks".`,

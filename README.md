@@ -58,6 +58,7 @@ No — with one deliberate, visible exception. Your folder choices are saved to 
 ## Security
 
 - Your device signs its requests with a key generated locally (Ed25519). The key is stored **device-locally** and is never synced with your vault — not through Obsidian Sync, iCloud, or git — and never written into any note or plugin data file.
+- Your mesh history — incoming questions, received answers, the knocks you sent — is stored **device-locally too**, never inside the vault folder. Vault sync, backups, git, and vault-reading tools (including your own AI) never see it; the plugin's `data.json` holds only preferences and your already-public listing summary.
 - No password is ever entered in the plugin. Linking uses a single-use code that expires in 60 minutes.
 - **Honest limitation:** knock and answer envelopes currently transit the relay base64-encoded, **not end-to-end encrypted** — the relay operator could technically read question and answer text. Sealing envelopes to the recipient's key (as the [Knock Protocol](https://vantell.ai/protocol/) specifies) is on the roadmap; until it ships, treat Q&A text as visible to your Vantell server's operator.
 - **Honest limitation:** the signing key and the optional Anthropic key are stored device-locally, protected by your OS user account — not in an OS keychain. Obsidian plugins are not sandboxed from one another, so anything running as you (including other plugins) could read them. Both are deleted by "Remove Vantell from this vault".

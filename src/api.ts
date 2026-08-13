@@ -20,7 +20,7 @@
  * transmit-safe scan output only — note contents have no field to ride in.
  */
 import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from 'obsidian';
-import { didHeaders } from '@vantell/vaultscan-core';
+import { didHeaders, sealToRecipient } from '@vantell/vaultscan-core';
 import type { StoredIdentity } from './identity';
 
 export const DEFAULT_API = 'https://api.vantell.ai';
@@ -68,6 +68,22 @@ export function base64ToUtf8(b64: string): string {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new TextDecoder().decode(bytes);
+}
+
+/** Envelope body encoding (spec §2): sealed to the recipient's key whenever
+ * we know it (their Ed25519 pubkey from the registry row), so the relay
+ * cannot read the content; legacy base64-JSON only when the recipient's key
+ * is unknown (pre-publish enrollees). The spread result goes straight into
+ * the POST /v1/envelope body. */
+export function encodeEnvelope(
+  payload: unknown,
+  recipientEdPubB64: string | null,
+): { ciphertext: string; enc?: 'sealed' } {
+  const json = JSON.stringify(payload);
+  if (recipientEdPubB64) {
+    return { ciphertext: sealToRecipient(json, recipientEdPubB64), enc: 'sealed' };
+  }
+  return { ciphertext: utf8ToBase64(json) };
 }
 
 /** Claim a pairing code: binds this device's public key to the account that

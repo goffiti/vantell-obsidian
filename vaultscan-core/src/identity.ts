@@ -105,8 +105,11 @@ export async function didHeaders(
 ): Promise<Record<string, string>> {
   const ts = rfc3339Now();
   const bodySha = await sha256Hex(bodyBytes);
-  const barePath = path.split('?')[0]!;
-  const msg = `${method.toUpperCase()}\n${barePath}\n${ts}\n${bodySha}`;
+  // The FULL path including the query string is signed (SEC-15): an
+  // unsigned query would let anyone able to tamper with it replay or
+  // window the inbox. The server dual-accepts the legacy query-stripped
+  // form during migration (CONTRACTS.md).
+  const msg = `${method.toUpperCase()}\n${path}\n${ts}\n${bodySha}`;
   const sig = await signB64(new TextEncoder().encode(msg), seedB64);
   return {
     'X-Knock-Did': did,

@@ -1,14 +1,14 @@
 {
   "name": "vantell-obsidian",
   "private": true,
-  "version": "0.8.12",
+  "version": "0.9.0",
   "description": "Vantell for Obsidian — share what you know, never your notes.",
   "type": "module",
   "scripts": {
     "dev": "node esbuild.config.mjs watch",
     "build": "tsc --noEmit && tsc -p tsconfig.real.json --noEmit && node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.real.json --noEmit",
-    "lint": "eslint src && node scripts/check_routes.mjs",
+    "lint": "eslint src && node scripts/check_routes.mjs && node scripts/check_flows.mjs",
     "lint:review": "node scripts/lint_review_sim.mjs"
   },
   "dependencies": {

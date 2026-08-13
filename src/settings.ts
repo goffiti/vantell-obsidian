@@ -29,7 +29,7 @@ export class VantellSettingTab extends PluginSettingTab {
   override getControlValue(key: string): unknown {
     if (key === 'displayName') return this.plugin.data.displayName;
     if (key === 'aiModel') return this.plugin.data.aiModel;
-    if (key === 'apiBase') return this.plugin.data.apiBase;
+    if (key === 'apiBase') return this.plugin.device.apiBase;
     return undefined;
   }
 
@@ -37,8 +37,11 @@ export class VantellSettingTab extends PluginSettingTab {
     const v = typeof value === 'string' ? value : '';
     if (key === 'displayName') this.plugin.data.displayName = v;
     else if (key === 'aiModel') this.plugin.data.aiModel = v;
-    else if (key === 'apiBase') this.plugin.data.apiBase = v.trim() || 'https://api.vantell.ai';
-    else return;
+    else if (key === 'apiBase') {
+      this.plugin.device.apiBase = v.trim() || 'https://api.vantell.ai';
+      this.plugin.saveDevice();
+      return;
+    } else return;
     await this.plugin.saveData(this.plugin.data);
   }
 

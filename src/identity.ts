@@ -43,6 +43,17 @@ function store(app: App): LocalStore {
   };
 }
 
+/** Device-local JSON value (never synced with the vault) — the L-DEVICE
+ * store of doc/trust-architecture.md. Used for the mesh state (DeviceState)
+ * alongside the string secrets below. */
+export function loadLocalJson(app: App, key: string): unknown {
+  return store(app).loadLocalStorage(key);
+}
+
+export function saveLocalJson(app: App, key: string, value: unknown): void {
+  store(app).saveLocalStorage(key, value);
+}
+
 /** Device-local string secret (never synced with the vault). Shared by the
  * signing identity and the optional Anthropic API key. */
 export function loadLocalSecret(app: App, key: string): string | null {

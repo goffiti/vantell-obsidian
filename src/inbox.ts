@@ -10,7 +10,8 @@
  * DID-signed /v1/agent/knocks route) — this module never self-approves.
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { base64ToUtf8, respondKnock, signedGet, signedPost, utf8ToBase64 } from './api';
+import { base64ToUtf8, encodeEnvelope, respondKnock, signedGet, signedPost } from './api';
+import { openSealed } from '@vantell/vaultscan-core';
 import {
   buildPastePrompt,
   draftAnswer,
@@ -28,6 +29,8 @@ interface InboxEnvelope {
   from: string;
   ciphertext: string;
   created_at: string;
+  /** 'sealed' = crypto_box_seal to this device's key; absent = legacy b64. */
+  enc?: string;
 }
 
 interface KnockRow {
@@ -60,6 +63,28 @@ export interface IncomingRequest {
   knockId: string | null;
 }
 
+/** Decode an envelope body: sealed boxes are opened with this device's
+ * seed; anything that fails to open or parse is null — treated exactly like
+ * a foreign envelope (a future client's problem, never an error). */
+function decodeEnvelope(
+  env: { ciphertext: string; enc?: string },
+  seedB64: string,
+): Record<string, unknown> | null {
+  if (env.enc === 'sealed') {
+    const plain = openSealed(env.ciphertext, seedB64);
+    if (plain === null) return null;
+    try {
+      const parsed: unknown = JSON.parse(plain);
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return decodeB64Json(env.ciphertext);
+}
+
 function decodeB64Json(b64: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(base64ToUtf8(b64));
@@ -84,36 +109,36 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
 }> {
   const ident = loadIdentity(plugin.app);
   if (!ident?.did) return { requests: [], notifications: [], answers: [] };
-  const base = plugin.data.apiBase;
+  const base = plugin.device.apiBase;
 
-  const since = plugin.data.inboxCursor;
+  const since = plugin.device.inboxCursor;
   const path = `/v1/inbox${since ? `?since=${encodeURIComponent(since)}` : ''}`;
   const inbox = await signedGet<{ envelopes: InboxEnvelope[]; now?: string }>(ident, base, path);
   const fresh = (inbox.envelopes ?? []).filter(
-    (e) => !plugin.data.handledEnvelopes.includes(e.id),
+    (e) => !plugin.device.handledEnvelopes.includes(e.id),
   );
   // Advance the cursor only past what we actually ingested.
   const last = (inbox.envelopes ?? []).at(-1);
   if (last) {
-    plugin.data.inboxCursor = last.created_at;
-    plugin.data.pendingEnvelopes = [
-      ...plugin.data.pendingEnvelopes.filter((p) => !fresh.some((f) => f.id === p.id)),
+    plugin.device.inboxCursor = last.created_at;
+    plugin.device.pendingEnvelopes = [
+      ...plugin.device.pendingEnvelopes.filter((p) => !fresh.some((f) => f.id === p.id)),
       ...fresh,
     ].slice(-100);
-    await plugin.saveData(plugin.data);
+    plugin.saveDevice();
   }
 
   const notifications: string[] = [];
   const answers: IncomingAnswer[] = [];
   const queries: InboxEnvelope[] = [];
-  for (const env of plugin.data.pendingEnvelopes) {
-    const body = decodeB64Json(env.ciphertext);
+  for (const env of plugin.device.pendingEnvelopes) {
+    const body = decodeEnvelope(env, ident.private_key_b64);
     if (!body) continue; // sealed or foreign — a future client's problem
     if (body['type'] === 'knock_response') {
       const decision = typeof body['decision'] === 'string' ? body['decision'] : 'answered';
       const receipt = typeof body['receipt_id'] === 'string' ? body['receipt_id'] : '';
       notifications.push(`Your knock was ${decision} — receipt ${receipt}`);
-      plugin.data.handledEnvelopes.push(env.id);
+      plugin.device.handledEnvelopes.push(env.id);
       continue;
     }
     if (body['type'] === 'answer') {
@@ -126,16 +151,16 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
           ? body['sources'].filter((s): s is string => typeof s === 'string').slice(0, 10)
           : [],
       });
-      plugin.data.handledEnvelopes.push(env.id);
+      plugin.device.handledEnvelopes.push(env.id);
       continue;
     }
     if (body['type'] === 'query') queries.push(env);
   }
   if (notifications.length > 0 || answers.length > 0) {
-    plugin.data.pendingEnvelopes = plugin.data.pendingEnvelopes.filter(
-      (p) => !plugin.data.handledEnvelopes.includes(p.id),
+    plugin.device.pendingEnvelopes = plugin.device.pendingEnvelopes.filter(
+      (p) => !plugin.device.handledEnvelopes.includes(p.id),
     );
-    await plugin.saveData(plugin.data);
+    plugin.saveDevice();
   }
 
   let knocks: KnockRow[] = [];
@@ -169,7 +194,7 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
   for (const a of answers) a.fromName = names.get(a.fromDid) ?? a.fromName;
 
   const requests: IncomingRequest[] = queries.map((env) => {
-    const body = decodeB64Json(env.ciphertext)!;
+    const body = decodeEnvelope(env, ident.private_key_b64)!;
     const knock = byEnvelope.get(env.id) ?? null;
     const status = knock?.status ?? null;
     return {
@@ -207,7 +232,7 @@ export async function respondToKnock(
     return false;
   }
   try {
-    await respondKnock(ident, plugin.data.apiBase, r.knockId, action);
+    await respondKnock(ident, plugin.device.apiBase, r.knockId, action);
     r.consent = action === 'approve' ? 'approved' : 'denied';
     plugin.refreshPanel();
     return true;
@@ -348,11 +373,11 @@ export class RequestsModal extends Modal {
       }
       row.addButton((b) =>
         b.setButtonText('Dismiss').onClick(async () => {
-          this.plugin.data.handledEnvelopes.push(r.envelopeId);
-          this.plugin.data.pendingEnvelopes = this.plugin.data.pendingEnvelopes.filter(
+          this.plugin.device.handledEnvelopes.push(r.envelopeId);
+          this.plugin.device.pendingEnvelopes = this.plugin.device.pendingEnvelopes.filter(
             (p) => p.id !== r.envelopeId,
           );
-          await this.plugin.saveData(this.plugin.data);
+          this.plugin.saveDevice();
           this.requests = this.requests.filter((x) => x.envelopeId !== r.envelopeId);
           this.plugin.setRequestCount(this.requests.length);
           this.render();
@@ -635,15 +660,30 @@ export class ComposeAnswerModal extends Modal {
         sources: [...this.selectedSources],
         answered_at: new Date().toISOString(),
       };
-      await signedPost(ident, this.plugin.data.apiBase, '/v1/envelope', {
+      // Seal to the asker whenever their key is published (registry row —
+      // includes cross-org circle members). Falls back to legacy base64
+      // only when they have never device-published a manifest.
+      let askerPubkey: string | null = null;
+      try {
+        const reg = await signedGet<{ manifests: { did?: string; pubkey?: string }[] }>(
+          ident,
+          this.plugin.device.apiBase,
+          '/v1/registry',
+        );
+        askerPubkey =
+          (reg.manifests ?? []).find((m) => m.did === r.fromDid)?.pubkey ?? null;
+      } catch {
+        askerPubkey = null;
+      }
+      await signedPost(ident, this.plugin.device.apiBase, '/v1/envelope', {
         to: r.fromDid,
-        ciphertext: utf8ToBase64(JSON.stringify(answer)),
+        ...encodeEnvelope(answer, askerPubkey),
       });
-      this.plugin.data.handledEnvelopes.push(r.envelopeId);
-      this.plugin.data.pendingEnvelopes = this.plugin.data.pendingEnvelopes.filter(
+      this.plugin.device.handledEnvelopes.push(r.envelopeId);
+      this.plugin.device.pendingEnvelopes = this.plugin.device.pendingEnvelopes.filter(
         (p) => p.id !== r.envelopeId,
       );
-      await this.plugin.saveData(this.plugin.data);
+      this.plugin.saveDevice();
       // Drop the answered request from the live list + panel immediately, so it
       // doesn't linger until the next poll.
       this.plugin.lastRequests = this.plugin.lastRequests.filter(

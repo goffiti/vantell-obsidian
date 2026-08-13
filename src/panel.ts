@@ -121,7 +121,7 @@ export class VantellView extends ItemView {
           via_circles?: string[];
           about?: string;
         }[];
-      }>(ident, this.plugin.data.apiBase, '/v1/registry');
+      }>(ident, this.plugin.device.apiBase, '/v1/registry');
       this.brains = (reg.manifests ?? [])
         .filter((m) => m.did && m.did !== ident.did)
         .map((m) => ({
@@ -149,7 +149,7 @@ export class VantellView extends ItemView {
     });
 
     // ---- answers to my knocks ----
-    const answers = this.plugin.data.receivedAnswers;
+    const answers = this.plugin.device.receivedAnswers;
     this.section(el, `Answers${answers.length ? ` (${answers.length})` : ''}`, (body) => {
       if (answers.length === 0) {
         body.createEl('p', { cls: 'vantell-sub', text: 'Answers to your knocks land here.' });
@@ -169,7 +169,7 @@ export class VantellView extends ItemView {
     });
 
     // ---- sent knocks ----
-    const sent = this.plugin.data.sentKnocks;
+    const sent = this.plugin.device.sentKnocks;
     this.section(el, `Your knocks${sent.length ? ` (${sent.length})` : ''}`, (body) => {
       if (sent.length === 0) {
         body.createEl('p', { cls: 'vantell-sub', text: 'Knocks you send show here with their status.' });

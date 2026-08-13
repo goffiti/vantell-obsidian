@@ -41,6 +41,11 @@ for (const [k, v] of Object.entries(tsconfig.compilerOptions.paths ?? {})) {
     p.replace('../packages/vaultscan-core', 'vaultscan-core'),
   );
 }
+if (Array.isArray(tsconfig.include)) {
+  tsconfig.include = tsconfig.include.map((p) =>
+    p.replace('../packages/vaultscan-core', 'vaultscan-core'),
+  );
+}
 writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + '\n');
 
 const eslint = new ESLint({

@@ -22,7 +22,7 @@ import { saveApiKey } from './ai';
 import { signedPost } from './api';
 import { clearIdentity, loadIdentity } from './identity';
 import { makeObsidianProvider } from './provider';
-import { DEFAULT_DATA } from './data';
+import { DEFAULT_DATA, DEFAULT_DEVICE } from './data';
 import type VantellPlugin from './main';
 
 interface SweepPlan {
@@ -55,7 +55,7 @@ async function tryUnpublish(app: App, plugin: VantellPlugin): Promise<string | n
   const ident = loadIdentity(app);
   if (!ident?.did) return 'this device holds no linked identity';
   try {
-    await signedPost(ident, plugin.data.apiBase, '/v1/unpublish', {});
+    await signedPost(ident, plugin.device.apiBase, '/v1/unpublish', {});
     return null;
   } catch (err) {
     return err instanceof Error ? err.message : 'the server could not be reached';
@@ -89,6 +89,8 @@ async function executeSweep(app: App, plugin: VantellPlugin, plan: SweepPlan): P
   saveApiKey(app, null);
   plugin.data = { ...DEFAULT_DATA };
   await plugin.saveData(plugin.data);
+  plugin.device = { ...DEFAULT_DEVICE };
+  plugin.saveDevice();
   plugin.refreshStatusBar();
   return cleaned;
 }

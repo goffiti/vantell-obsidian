@@ -167,7 +167,7 @@ export class SetupWizard extends Modal {
     this.busy = true;
     try {
       const ident = this.identity ?? (await loadOrCreateIdentity(this.app));
-      const { did, api } = await claimPairingCode(this.plugin.data.apiBase, trimmed, ident.pubkey);
+      const { did, api } = await claimPairingCode(this.plugin.device.apiBase, trimmed, ident.pubkey);
       this.identity = { ...ident, did, api };
       saveIdentity(this.app, this.identity);
       new Notice('Linked. This vault now has its own signed identity.');
@@ -403,7 +403,7 @@ export class SetupWizard extends Modal {
       const { record } = await publishScan(
         this.scanCtx.result,
         this.identity,
-        this.plugin.data.apiBase,
+        this.plugin.device.apiBase,
         name,
       );
       this.plugin.data.displayName = name;
