@@ -68,6 +68,9 @@ export function saveLocalSecret(app: App, key: string, value: string | null): vo
 export interface StoredIdentity extends DeviceIdentity {
   /** API base pinned at pairing time (the /v1/pair/claim response). */
   api?: string;
+  /** Server response-signing pubkey, pinned at pairing (TOFU, like SSH
+   * host keys). When present, every relay response must authenticate. */
+  server_pubkey?: string;
 }
 
 export function loadIdentity(app: App): StoredIdentity | null {

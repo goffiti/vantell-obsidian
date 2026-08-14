@@ -167,8 +167,17 @@ export class SetupWizard extends Modal {
     this.busy = true;
     try {
       const ident = this.identity ?? (await loadOrCreateIdentity(this.app));
-      const { did, api } = await claimPairingCode(this.plugin.device.apiBase, trimmed, ident.pubkey);
-      this.identity = { ...ident, did, api };
+      const { did, api, server_pubkey } = await claimPairingCode(
+        this.plugin.device.apiBase,
+        trimmed,
+        ident.pubkey,
+      );
+      // SEC-3: the pairing response chooses where this device talks next —
+      // constrain it. Plain-HTTP endpoints are never accepted.
+      if (!api.startsWith('https://')) {
+        throw new ApiError(`The server proposed a non-HTTPS endpoint (${api}) — refusing.`, 0);
+      }
+      this.identity = { ...ident, did, api, server_pubkey };
       saveIdentity(this.app, this.identity);
       new Notice('Linked. This vault now has its own signed identity.');
       this.step = 'folders';

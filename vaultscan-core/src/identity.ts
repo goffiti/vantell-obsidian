@@ -83,6 +83,24 @@ export async function signManifest(
   return signB64(new TextEncoder().encode(canonicalJson(unsigned)), seedB64);
 }
 
+/** Verify a base64 Ed25519 signature over a UTF-8 message — the client
+ * side of CONTRACTS 'Server response signing'. Never throws. */
+export async function verifySignatureB64(
+  message: string,
+  sigB64: string,
+  pubkeyB64: string,
+): Promise<boolean> {
+  try {
+    return await ed.verifyAsync(
+      b64ToBytes(sigB64),
+      new TextEncoder().encode(message),
+      b64ToBytes(pubkeyB64),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function sha256Hex(data: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', data as BufferSource);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');

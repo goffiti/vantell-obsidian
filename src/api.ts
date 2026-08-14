@@ -20,7 +20,7 @@
  * transmit-safe scan output only — note contents have no field to ride in.
  */
 import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from 'obsidian';
-import { didHeaders, sealToRecipient } from '@vantell/vaultscan-core';
+import { didHeaders, sealToRecipient, sha256Hex, verifySignatureB64 } from '@vantell/vaultscan-core';
 import type { StoredIdentity } from './identity';
 
 export const DEFAULT_API = 'https://api.vantell.ai';
@@ -52,6 +52,44 @@ function timedRequest(params: RequestUrlParam): Promise<RequestUrlResponse> {
       );
     }),
   ]);
+}
+
+/** Server response authentication (CONTRACTS 'Server response signing',
+ * SEC-4): when a server pubkey was pinned at pairing, every relay response
+ * must carry a valid signature over STATUS\nBAREPATH\nTIMESTAMP\n
+ * SHA256_HEX(body) within a 5-minute window. Identities paired before
+ * 0.9.1 have no pin and skip this — the pin arrives on the next re-link
+ * (TOFU, like SSH host keys). */
+const RESPONSE_SKEW_MS = 5 * 60_000;
+async function assertAuthentic(
+  res: RequestUrlResponse,
+  path: string,
+  ident: StoredIdentity | null,
+): Promise<void> {
+  const pin = ident?.server_pubkey;
+  if (!pin) return;
+  const headers: Record<string, string> = {};
+  for (const [k, v] of Object.entries(res.headers ?? {})) headers[k.toLowerCase()] = v;
+  const ts = headers['x-knock-server-timestamp'];
+  const sig = headers['x-knock-server-signature'];
+  if (!ts || !sig) {
+    throw new ApiError(
+      'The server did not authenticate its response — refusing to trust it.',
+      res.status,
+    );
+  }
+  const fresh = Math.abs(Date.now() - Date.parse(ts)) < RESPONSE_SKEW_MS;
+  const bodySha = await sha256Hex(new TextEncoder().encode(res.text ?? ''));
+  const msg = `${res.status}
+${path.split('?')[0]!}
+${ts}
+${bodySha}`;
+  if (!fresh || !(await verifySignatureB64(msg, sig, pin))) {
+    throw new ApiError(
+      'Server response failed authentication — possible tampering. Nothing was trusted.',
+      res.status,
+    );
+  }
 }
 
 /** UTF-8-safe base64 for envelope payloads (bare btoa/atob is Latin-1 only
@@ -92,7 +130,7 @@ export async function claimPairingCode(
   base: string,
   code: string,
   pubkey: string,
-): Promise<{ did: string; api: string }> {
+): Promise<{ did: string; api: string; server_pubkey?: string }> {
   const res = await timedRequest({
     url: `${apiBase(null, base)}/v1/pair/claim`,
     method: 'POST',
@@ -109,9 +147,13 @@ export async function claimPairingCode(
   if (res.status !== 200 && res.status !== 201) {
     throw new ApiError(`Linking failed (HTTP ${res.status}). Please try again.`, res.status);
   }
-  const body = res.json as { did?: string; api?: string };
+  const body = res.json as { did?: string; api?: string; server_pubkey?: string };
   if (!body.did) throw new ApiError('Linking failed: no identity in the response.', res.status);
-  return { did: body.did, api: body.api ?? base };
+  return {
+    did: body.did,
+    api: body.api ?? base,
+    server_pubkey: typeof body.server_pubkey === 'string' ? body.server_pubkey : undefined,
+  };
 }
 
 /** DID-signed GET — used for /v1/inbox, /v1/agent/knocks, /v1/registry.
@@ -135,6 +177,7 @@ export async function signedGet<T>(
     headers,
     throw: false,
   });
+  await assertAuthentic(res, path, ident);
   if (res.status !== 200) {
     throw new ApiError(`Request failed (HTTP ${res.status}).`, res.status);
   }
@@ -175,6 +218,7 @@ export async function signedPost(
     body: bodyText,
     throw: false,
   });
+  await assertAuthentic(res, path, ident);
   if (res.status === 401 || res.status === 403) {
     throw new ApiError(
       'The server no longer accepts this device\'s key — another device may have been linked since. Re-link this device to continue publishing from it.',

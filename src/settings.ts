@@ -162,8 +162,23 @@ export class VantellSettingTab extends PluginSettingTab {
       },
       {
         name: 'Server (advanced)',
-        desc: 'Only change this for a self-hosted or test server. Takes effect on the next link.',
-        control: { type: 'text', key: 'apiBase' },
+        render: (setting: Setting) => {
+          const pinned = loadIdentity(this.app)?.api;
+          setting
+            .setName('Server (advanced)')
+            .setDesc(
+              (pinned
+                ? `This link is pinned to ${pinned} (set at pairing, HTTPS enforced). `
+                : 'Not linked yet. ') +
+                'The field below changes which server the NEXT link talks to — only for self-hosted or test servers.',
+            )
+            .addText((t) => {
+              t.setValue(this.plugin.device.apiBase).onChange((v) => {
+                this.plugin.device.apiBase = v.trim() || 'https://api.vantell.ai';
+                this.plugin.saveDevice();
+              });
+            });
+        },
       },
     ];
   }
