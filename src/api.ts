@@ -92,36 +92,18 @@ ${bodySha}`;
   }
 }
 
-/** UTF-8-safe base64 for envelope payloads (bare btoa/atob is Latin-1 only
- * and would garble any non-ASCII text). */
-export function utf8ToBase64(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-
-export function base64ToUtf8(b64: string): string {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-
-/** Envelope body encoding (spec §2): sealed to the recipient's key whenever
- * we know it (their Ed25519 pubkey from the registry row), so the relay
- * cannot read the content; legacy base64-JSON only when the recipient's key
- * is unknown (pre-publish enrollees). The spread result goes straight into
- * the POST /v1/envelope body. */
+/** Envelope body encoding (spec §2): sealed to the recipient's key — the
+ * ONLY encoding since the 2026-08-14 legacy retirement; the relay rejects
+ * unsealed envelopes. Callers must resolve the recipient's Ed25519 pubkey
+ * (registry row) first and surface a clear error when there is none. */
 export function encodeEnvelope(
   payload: unknown,
-  recipientEdPubB64: string | null,
-): { ciphertext: string; enc?: 'sealed' } {
-  const json = JSON.stringify(payload);
-  if (recipientEdPubB64) {
-    return { ciphertext: sealToRecipient(json, recipientEdPubB64), enc: 'sealed' };
-  }
-  return { ciphertext: utf8ToBase64(json) };
+  recipientEdPubB64: string,
+): { ciphertext: string; enc: 'sealed' } {
+  return {
+    ciphertext: sealToRecipient(JSON.stringify(payload), recipientEdPubB64),
+    enc: 'sealed',
+  };
 }
 
 /** Claim a pairing code: binds this device's public key to the account that

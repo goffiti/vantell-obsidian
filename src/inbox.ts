@@ -10,7 +10,7 @@
  * DID-signed /v1/agent/knocks route) — this module never self-approves.
  */
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { base64ToUtf8, encodeEnvelope, respondKnock, signedGet, signedPost } from './api';
+import { encodeEnvelope, respondKnock, signedGet, signedPost } from './api';
 import { openSealed } from '@vantell/vaultscan-core';
 import {
   buildPastePrompt,
@@ -70,24 +70,13 @@ function decodeEnvelope(
   env: { ciphertext: string; enc?: string },
   seedB64: string,
 ): Record<string, unknown> | null {
-  if (env.enc === 'sealed') {
-    const plain = openSealed(env.ciphertext, seedB64);
-    if (plain === null) return null;
-    try {
-      const parsed: unknown = JSON.parse(plain);
-      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : null;
-    } catch {
-      return null;
-    }
-  }
-  return decodeB64Json(env.ciphertext);
-}
-
-function decodeB64Json(b64: string): Record<string, unknown> | null {
+  // Sealed-only since the 2026-08-14 legacy retirement: anything else is
+  // treated as a foreign envelope (null), exactly like a failed unseal.
+  if (env.enc !== 'sealed') return null;
+  const plain = openSealed(env.ciphertext, seedB64);
+  if (plain === null) return null;
   try {
-    const parsed: unknown = JSON.parse(base64ToUtf8(b64));
+    const parsed: unknown = JSON.parse(plain);
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : null;
@@ -95,6 +84,7 @@ function decodeB64Json(b64: string): Record<string, unknown> | null {
     return null;
   }
 }
+
 
 function nameFromDid(did: string): string {
   return did.split(':').pop() ?? did;
@@ -660,9 +650,9 @@ export class ComposeAnswerModal extends Modal {
         sources: [...this.selectedSources],
         answered_at: new Date().toISOString(),
       };
-      // Seal to the asker whenever their key is published (registry row —
-      // includes cross-org circle members). Falls back to legacy base64
-      // only when they have never device-published a manifest.
+      // Answers are sealed to the asker's published key (registry row —
+      // includes cross-org circle members). Unsealed answers are never
+      // sent; if the key can't be resolved, the answer stays here.
       let askerPubkey: string | null = null;
       try {
         const reg = await signedGet<{ manifests: { did?: string; pubkey?: string }[] }>(
@@ -674,6 +664,14 @@ export class ComposeAnswerModal extends Modal {
           (reg.manifests ?? []).find((m) => m.did === r.fromDid)?.pubkey ?? null;
       } catch {
         askerPubkey = null;
+      }
+      if (!askerPubkey) {
+        new Notice(
+          "Could not resolve the asker's key, so this answer can't be sealed — nothing was " +
+            'sent. Try again in a moment.',
+        );
+        this.busy = false;
+        return;
       }
       await signedPost(ident, this.plugin.device.apiBase, '/v1/envelope', {
         to: r.fromDid,

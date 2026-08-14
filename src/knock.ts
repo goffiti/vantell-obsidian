@@ -223,9 +223,17 @@ export class KnockComposerModal extends Modal {
         question: this.question.trim(),
       };
       const recipient = this.colleagues.find((c) => c.did === this.toDid);
+      if (!recipient?.pubkey) {
+        new Notice(
+          "They haven't finished device setup, so questions can't be sealed to them yet — " +
+            'unsealed questions are never sent. Ask them to install the plugin and go live.',
+        );
+        this.busy = false;
+        return;
+      }
       await signedPost(ident, this.plugin.device.apiBase, '/v1/envelope', {
         to: this.toDid,
-        ...encodeEnvelope(query, recipient?.pubkey || null),
+        ...encodeEnvelope(query, recipient.pubkey),
         level: this.level,
         topic: this.topic.trim() || undefined,
         purpose: this.purpose.trim(),

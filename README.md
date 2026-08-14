@@ -35,7 +35,7 @@ Never sent: note contents (except AI drafting, below), note titles beyond the pe
 
 **Links the plugin opens** (in your browser, with nothing attached): `app.vantell.ai` — your dashboard, for pairing codes and knock approvals — and `claude.ai`, an optional shortcut offered by the paste-bridge drafting path. These two domains appear in the code only as links; the plugin's network *requests* go exclusively to `api.vantell.ai` (or the server you configured).
 
-**Why the code contains `atob`/`btoa`**: knock and answer payloads travel as base64-encoded JSON envelopes — the transport encoding defined by the open [Knock Protocol](https://vantell.ai/protocol/), not obfuscation. Envelopes are decoded only to be shown to you as inert text.
+**Why the code contains `atob`/`btoa`**: sealed envelope bytes (and keys) are base64-wrapped for transport — the encoding defined by the open [Knock Protocol](https://vantell.ai/protocol/), not obfuscation. Envelopes are unsealed with this device's key and shown to you as inert text.
 
 ### Answer drafting — two ways, both optional
 
@@ -60,7 +60,7 @@ No — with one deliberate, visible exception. Your folder choices are saved to 
 - Your device signs its requests with a key generated locally (Ed25519). The key is stored **device-locally** and is never synced with your vault — not through Obsidian Sync, iCloud, or git — and never written into any note or plugin data file.
 - Your mesh history — incoming questions, received answers, the knocks you sent — is stored **device-locally too**, never inside the vault folder. Vault sync, backups, git, and vault-reading tools (including your own AI) never see it; the plugin's `data.json` holds only preferences and your already-public listing summary.
 - No password is ever entered in the plugin. Linking uses a single-use code that expires in 60 minutes.
-- **Honest limitation:** knock and answer envelopes currently transit the relay base64-encoded, **not end-to-end encrypted** — the relay operator could technically read question and answer text. Sealing envelopes to the recipient's key (as the [Knock Protocol](https://vantell.ai/protocol/) specifies) is on the roadmap; until it ships, treat Q&A text as visible to your Vantell server's operator.
+- Knock and answer envelopes are **end-to-end sealed** (libsodium `crypto_box_seal`) to the recipient's key — the relay stores ciphertext it cannot read, and since 2026-08-14 it **rejects** unsealed envelopes outright. What the relay necessarily sees is routing metadata: who asked whom, when, at what level, and the stated purpose.
 - **Honest limitation:** the signing key and the optional Anthropic key are stored device-locally, protected by your OS user account — not in an OS keychain. Obsidian plugins are not sandboxed from one another, so anything running as you (including other plugins) could read them. Both are deleted by "Remove Vantell from this vault".
 - The plugin's full source — including the vault scanner (`vaultscan-core`) — is public: [github.com/goffiti/vantell-obsidian](https://github.com/goffiti/vantell-obsidian). Audit it, or ask your own AI to.
 
@@ -72,4 +72,4 @@ No — with one deliberate, visible exception. Your folder choices are saved to 
 
 ## For teams
 
-Vantell implements the [Knock Protocol](https://vantell.ai): colleagues' requests to go deeper than topic labels arrive as *knocks* you explicitly approve or deny, with consent receipts and a content-free audit trail. Your **org admin** sees metadata only — never contents, never question texts. (The relay *operator* can currently read Q&A envelopes until end-to-end sealing ships — see the limitation under Security.)
+Vantell implements the [Knock Protocol](https://vantell.ai): colleagues' requests to go deeper than topic labels arrive as *knocks* you explicitly approve or deny, with consent receipts and a content-free audit trail. Your **org admin** sees metadata only — never contents, never question texts — and envelopes are sealed end-to-end, so the relay operator can't read them either.
