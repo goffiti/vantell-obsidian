@@ -209,12 +209,15 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
   return { requests, notifications, answers };
 }
 
-/** Approve/deny a knock directly from the plugin (DID-signed). Returns true
- * on success. Refreshes the panel. */
+/** Approve/deny a knock directly from the plugin (DID-signed). `standing`
+ * asks the relay to keep allowing this person (capped at L3 and the org
+ * floor, receipt-backed, revocable on the dashboard). Returns true on
+ * success. Refreshes the panel. */
 export async function respondToKnock(
   plugin: VantellPlugin,
   r: IncomingRequest,
   action: 'approve' | 'deny',
+  standing = false,
 ): Promise<boolean> {
   const ident = loadIdentity(plugin.app);
   if (!ident?.did || !r.knockId) {
@@ -222,8 +225,14 @@ export async function respondToKnock(
     return false;
   }
   try {
-    await respondKnock(ident, plugin.device.apiBase, r.knockId, action);
+    await respondKnock(ident, plugin.device.apiBase, r.knockId, action, standing);
     r.consent = action === 'approve' ? 'approved' : 'denied';
+    if (standing && action === 'approve') {
+      new Notice(
+        `${r.fromName} can now ask without waiting for your yes. ` +
+          'You still write every answer — revoke anytime in your dashboard.',
+      );
+    }
     plugin.refreshPanel();
     return true;
   } catch (err) {
@@ -325,13 +334,22 @@ export class RequestsModal extends Modal {
             }),
         );
       } else if (r.consent === 'pending' && r.knockId) {
+        let standing = false;
+        new Setting(card)
+          .setName(`Keep allowing ${r.fromName}`)
+          .setDesc(
+            'Future questions from them skip the approval wait (up to L3 — ' +
+              'summaries in your own words, never note contents). You still ' +
+              'write every answer. Revoke anytime in your dashboard.',
+          )
+          .addToggle((t) => t.setValue(false).onChange((v) => (standing = v)));
         row.setDesc('Approve to answer here, or decline — no dashboard needed.');
         row.addButton((b) =>
           b
             .setButtonText('Approve & answer')
             .setCta()
             .onClick(async () => {
-              if (await respondToKnock(this.plugin, r, 'approve')) {
+              if (await respondToKnock(this.plugin, r, 'approve', standing)) {
                 this.close();
                 r.consent = 'approved';
                 new ComposeAnswerModal(this.app, this.plugin, r).open();
@@ -358,7 +376,8 @@ export class RequestsModal extends Modal {
         row.setDesc(
           r.consent === 'denied'
             ? 'You declined this request — nothing will be sent.'
-            : 'No matching consent request found for this query.',
+            : 'Sent before consent tracking covered it — ask them to re-send ' +
+                'the question and it will show up here to approve.',
         );
       }
       row.addButton((b) =>

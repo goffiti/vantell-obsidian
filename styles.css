@@ -220,6 +220,15 @@
 .vantell-code-input {
   text-transform: uppercase;
 }
+.vantell-keep-allowing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin: 4px 0;
+  cursor: pointer;
+}
 @keyframes vantell-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-accent) 45%, transparent); }
   70% { box-shadow: 0 0 0 6px transparent; }

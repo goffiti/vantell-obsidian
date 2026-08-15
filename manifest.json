@@ -1,9 +1,9 @@
 {
   "id": "vantell",
   "name": "Vantell",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "minAppVersion": "1.13.0",
-  "description": "Connect your second brain to your team's. Colleagues discover what you know from topic labels, note counts and sample titles in folders you choose. Contents stay in your vault — optional AI drafting uses your own account, never Vantell's.",
+  "description": "Connect your second brain to your team's. Colleagues discover what you know from topic labels, note counts and sample titles in folders you choose. Contents stay in your vault \u2014 optional AI drafting uses your own account, never Vantell's.",
   "author": "Vantell",
   "authorUrl": "https://vantell.ai",
   "helpUrl": "https://github.com/goffiti/vantell-obsidian#readme",

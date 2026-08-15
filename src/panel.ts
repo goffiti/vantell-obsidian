@@ -208,9 +208,14 @@ export class VantellView extends ItemView {
       const b = row.createEl('button', { cls: 'mod-cta', text: 'Answer' });
       b.onclick = () => new ComposeAnswerModal(this.plugin.app, this.plugin, r).open();
     } else if (r.consent === 'pending' && r.knockId) {
+      // "Keep allowing" (standing consent, v0.10): skips only the future
+      // approval WAIT for this person — the owner still writes every answer.
+      const keep = card.createEl('label', { cls: 'vantell-keep-allowing' });
+      const tick = keep.createEl('input', { type: 'checkbox' });
+      keep.appendText(` Keep allowing ${r.fromName} (up to L3, revocable)`);
       const yes = row.createEl('button', { cls: 'mod-cta', text: 'Approve & answer' });
       yes.onclick = async () => {
-        if (await respondToKnock(this.plugin, r, 'approve')) {
+        if (await respondToKnock(this.plugin, r, 'approve', tick.checked)) {
           new ComposeAnswerModal(this.plugin.app, this.plugin, r).open();
         }
       };
@@ -225,7 +230,10 @@ export class VantellView extends ItemView {
       const b = row.createEl('button', { text: 'Approve on dashboard' });
       b.onclick = () => window.open('https://app.vantell.ai/knocks', '_blank');
     } else {
-      row.createSpan({ cls: 'vantell-sub', text: 'No matching consent found.' });
+      row.createSpan({
+        cls: 'vantell-sub',
+        text: 'Sent before consent tracking covered it — ask them to re-send.',
+      });
     }
   }
 

@@ -18,8 +18,6 @@ interface RegistryManifest {
   display_name?: string;
   topics?: { label?: string }[];
   via_circles?: string[];
-  /** The owner's disclosure ceiling — questions above it raise a knock. */
-  max_level?: number;
   /** Owner-written "what you can ask me" blurb from their manifest. */
   about?: string;
   /** Their device-published Ed25519 pubkey — what we seal envelopes to. */
@@ -32,8 +30,6 @@ interface Colleague {
   topics: string[];
   /** Reached through the owner's circles (cross-org) rather than the org. */
   viaCircles: string[];
-  /** Their disclosure ceiling — the relay raises a knock above this. */
-  maxLevel: number;
   /** Their "what you can ask me" blurb (may be empty). */
   about: string;
   /** Ed25519 pubkey to seal to; '' when they never device-published. */
@@ -50,7 +46,9 @@ export class KnockComposerModal extends Modal {
   private topic = '';
   private question = '';
   private purpose = '';
-  private level = 3;
+  /** Fixed wire plumbing since knock-first (v0.10): every question knocks;
+   * L3 is the standing-grant ceiling. No user-facing picker. */
+  private readonly level = 3;
   private busy = false;
 
   constructor(
@@ -82,7 +80,6 @@ export class KnockComposerModal extends Modal {
           name: m.display_name || nameFromDid(m.did!),
           topics: (m.topics ?? []).map((t) => t.label ?? '').filter(Boolean),
           viaCircles: (m.via_circles ?? []).filter((c): c is string => typeof c === 'string'),
-          maxLevel: typeof m.max_level === 'number' ? m.max_level : 2,
           about: typeof m.about === 'string' ? m.about : '',
           pubkey: typeof m.pubkey === 'string' ? m.pubkey : '',
         }));
@@ -171,19 +168,12 @@ export class KnockComposerModal extends Modal {
     p.value = this.purpose;
     p.addEventListener('input', () => (this.purpose = p.value));
 
-    new Setting(el)
-      .setName('Depth')
-      .setDesc(
-        sel
-          ? `Their ceiling is L${sel.maxLevel}: anything above it raises a knock they approve; up to L${sel.maxLevel} is lighter.`
-          : 'Levels above their ceiling raise a knock they approve.',
-      )
-      .addDropdown((d) => {
-        d.addOption('3', 'Level 3 — needs their yes')
-          .addOption('2', 'Level 2 — abstract')
-          .setValue(String(this.level))
-          .onChange((v) => (this.level = Number(v)));
-      });
+    // Knock-first (v0.10): no depth picker — every question knocks and the
+    // recipient approves or declines. Level is fixed wire plumbing now.
+    el.createEl('p', {
+      cls: 'vantell-sub',
+      text: `${sel?.name ?? 'They'} will be asked before anything is shared — and if they've chosen to keep allowing you, your question goes straight through.`,
+    });
 
     new Setting(el)
       .addButton((b) =>
