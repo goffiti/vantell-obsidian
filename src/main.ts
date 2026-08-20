@@ -200,6 +200,7 @@ export default class VantellPlugin extends Plugin {
         // Persist first, so a missed popup can always be reopened.
         this.device.receivedAnswers = [
           ...answers.map((a) => ({
+            fromDid: a.fromDid,
             fromName: a.fromName,
             topic: a.topic,
             summary: a.summary,

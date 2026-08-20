@@ -10,7 +10,9 @@ In Obsidian, open *Settings → Community plugins → Browse*, search for “Van
 
 ## The Vantell panel
 
-Click the **radio icon** in the left ribbon (or run the “Open the panel” command) for a live side panel: the **connected brains** in your org shown as a small constellation and topic-tagged cards (click any to knock them), the **requests** waiting for your answer, the **answers** that came back to your knocks, and the **knocks you've sent** with their status. It's the interactive home for the mesh — everything else (setup, per-note sharing) still lives in commands and settings.
+Click the **radio icon** in the left ribbon (or run the “Open the panel” command) for a live side panel: your mesh as a **conversation list**, one row per colleague, showing the last thing that passed between you and a badge when someone is waiting on your answer. Open a row and the **thread** expands in place — their questions and answers on one side, yours on the other — with a composer at the foot for your next question. Requests carry their Approve / Decline buttons right in the thread, and a header toggle shows the mesh as a small constellation. It's the interactive home for the mesh — everything else (setup, per-note sharing) still lives in commands and settings.
+
+Writing an answer still opens the answer window, where you pick which note **titles** to list as sources and can build a drafting prompt for your own Claude. Nothing is ever sent until you press Send.
 
 ## How it works
 

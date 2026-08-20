@@ -32,6 +32,26 @@ export interface ReceivedAnswer {
   at: string;
   /** Titles the answerer ticked as sources (absent on pre-0.8.11 records). */
   sources?: string[];
+  /** Who sent it — how the panel threads it (absent on pre-0.11 records,
+   * which fall back to name matching). */
+  fromDid?: string;
+}
+
+/** An answer the owner wrote and sent — the outgoing half of a thread. Kept
+ * device-local so the conversation reads as a conversation, not a one-sided
+ * inbox. Same label as everything else here: never in the synced vault. */
+export interface SentAnswer {
+  toDid: string;
+  toName: string;
+  topic: string | null;
+  summary: string;
+  /** Note TITLES the owner ticked as sources — never note contents. */
+  sources: string[];
+  at: string;
+  /** The question this answered, kept so the thread still reads as an
+   * exchange after the envelope is cleared. Their words, device-local. */
+  question?: string;
+  questionAt?: string;
 }
 
 /** A knock the owner sent — the outbox side of the panel. */
@@ -60,6 +80,8 @@ export interface DeviceState {
   receivedAnswers: ReceivedAnswer[];
   /** Knocks the owner has sent — newest first, capped. */
   sentKnocks: SentKnock[];
+  /** Answers the owner has sent — newest first, capped. */
+  sentAnswers: SentAnswer[];
 }
 
 export const DEFAULT_DEVICE: DeviceState = {
@@ -68,6 +90,7 @@ export const DEFAULT_DEVICE: DeviceState = {
   pendingEnvelopes: [],
   receivedAnswers: [],
   sentKnocks: [],
+  sentAnswers: [],
 };
 
 /** L-VAULTCFG-adjacent: preferences and already-public metadata only. */
@@ -121,6 +144,8 @@ export function migrateLegacyData(
     sentKnocks: Array.isArray(raw['sentKnocks'])
       ? (raw['sentKnocks'] as SentKnock[])
       : device.sentKnocks,
+    // Never existed in the pre-0.9.0 layout — nothing to lift.
+    sentAnswers: device.sentAnswers,
   };
   return { device: merged, hadLegacy };
 }

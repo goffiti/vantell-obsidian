@@ -23,6 +23,7 @@ const L_DEVICE_FIELDS = [
   'pendingEnvelopes',
   'receivedAnswers',
   'sentKnocks',
+  'sentAnswers',
   'private_key_b64',
   'ciphertext',
   'question',

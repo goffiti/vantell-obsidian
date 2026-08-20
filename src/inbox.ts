@@ -700,6 +700,21 @@ export class ComposeAnswerModal extends Modal {
       this.plugin.device.pendingEnvelopes = this.plugin.device.pendingEnvelopes.filter(
         (p) => p.id !== r.envelopeId,
       );
+      // Keep the owner's own half of the conversation (device-local, L-DEVICE)
+      // so the panel can show a thread instead of a one-sided inbox.
+      this.plugin.device.sentAnswers = [
+        {
+          toDid: r.fromDid,
+          toName: r.fromName,
+          topic: r.topic,
+          summary,
+          sources: [...this.selectedSources],
+          at: answer.answered_at,
+          question: r.question,
+          questionAt: r.createdAt,
+        },
+        ...this.plugin.device.sentAnswers,
+      ].slice(0, 50);
       this.plugin.saveDevice();
       // Drop the answered request from the live list + panel immediately, so it
       // doesn't linger until the next poll.

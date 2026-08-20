@@ -40,15 +40,82 @@ function nameFromDid(did: string): string {
   return did.split(':').pop() ?? did;
 }
 
+/** Everything a knock needs on the wire. The recipient's pubkey is resolved
+ * by the caller (registry row) — an unsealed knock is never sent. */
+export interface KnockDraft {
+  toDid: string;
+  toName: string;
+  toPubkey: string;
+  topic: string | null;
+  question: string;
+  purpose: string;
+}
+
+/** Send one knock and record it in the device-local outbox. Shared by the
+ * composer modal and the panel's inline composer, so both halves stay
+ * identical on the wire (fixed L3, sealed-only, purpose required). Returns
+ * true when it left; Notices explain every false. */
+export async function sendKnock(plugin: VantellPlugin, d: KnockDraft): Promise<boolean> {
+  const ident = loadIdentity(plugin.app);
+  if (!ident?.did) {
+    new Notice('This device is not linked.');
+    return false;
+  }
+  if (!d.toPubkey) {
+    new Notice(
+      "They haven't finished device setup, so questions can't be sealed to them yet — " +
+        'unsealed questions are never sent. Ask them to install the plugin and go live.',
+    );
+    return false;
+  }
+  const topic = d.topic?.trim() || null;
+  const query = {
+    knock: '0.1',
+    type: 'query',
+    from: ident.did,
+    to: d.toDid,
+    level: KNOCK_LEVEL,
+    topic,
+    question: d.question.trim(),
+  };
+  try {
+    await signedPost(ident, plugin.device.apiBase, '/v1/envelope', {
+      to: d.toDid,
+      ...encodeEnvelope(query, d.toPubkey),
+      level: KNOCK_LEVEL,
+      topic: topic ?? undefined,
+      purpose: d.purpose.trim(),
+    });
+  } catch (err) {
+    new Notice(err instanceof Error ? err.message : 'Sending the knock failed.');
+    return false;
+  }
+  plugin.device.sentKnocks = [
+    {
+      toDid: d.toDid,
+      toName: d.toName,
+      topic,
+      question: d.question.trim(),
+      at: new Date().toISOString(),
+      status: 'sent' as const,
+    },
+    ...plugin.device.sentKnocks,
+  ].slice(0, 50);
+  plugin.saveDevice();
+  plugin.refreshPanel();
+  return true;
+}
+
+/** Fixed wire plumbing since knock-first (v0.10): every question knocks;
+ * L3 is the standing-grant ceiling. No user-facing picker. */
+const KNOCK_LEVEL = 3;
+
 export class KnockComposerModal extends Modal {
   private colleagues: Colleague[] = [];
   private toDid = '';
   private topic = '';
   private question = '';
   private purpose = '';
-  /** Fixed wire plumbing since knock-first (v0.10): every question knocks;
-   * L3 is the standing-grant ceiling. No user-facing picker. */
-  private readonly level = 3;
   private busy = false;
 
   constructor(
@@ -203,49 +270,19 @@ export class KnockComposerModal extends Modal {
     }
     this.busy = true;
     try {
-      const query = {
-        knock: '0.1',
-        type: 'query',
-        from: ident.did,
-        to: this.toDid,
-        level: this.level,
-        topic: this.topic.trim() || null,
-        question: this.question.trim(),
-      };
       const recipient = this.colleagues.find((c) => c.did === this.toDid);
-      if (!recipient?.pubkey) {
-        new Notice(
-          "They haven't finished device setup, so questions can't be sealed to them yet — " +
-            'unsealed questions are never sent. Ask them to install the plugin and go live.',
-        );
-        this.busy = false;
-        return;
-      }
-      await signedPost(ident, this.plugin.device.apiBase, '/v1/envelope', {
-        to: this.toDid,
-        ...encodeEnvelope(query, recipient.pubkey),
-        level: this.level,
-        topic: this.topic.trim() || undefined,
-        purpose: this.purpose.trim(),
+      const who = recipient?.name ?? 'them';
+      const ok = await sendKnock(this.plugin, {
+        toDid: this.toDid,
+        toName: who,
+        toPubkey: recipient?.pubkey ?? '',
+        topic: this.topic,
+        question: this.question,
+        purpose: this.purpose,
       });
-      const who = this.colleagues.find((c) => c.did === this.toDid)?.name ?? 'them';
-      this.plugin.device.sentKnocks = [
-        {
-          toDid: this.toDid,
-          toName: who,
-          topic: this.topic.trim() || null,
-          question: this.question.trim(),
-          at: new Date().toISOString(),
-          status: 'sent' as const,
-        },
-        ...this.plugin.device.sentKnocks,
-      ].slice(0, 50);
-      this.plugin.saveDevice();
-      this.plugin.refreshPanel();
+      if (!ok) return;
       new Notice(`Knock sent to ${who}. You'll be notified here if they answer.`);
       this.close();
-    } catch (err) {
-      new Notice(err instanceof Error ? err.message : 'Sending the knock failed.');
     } finally {
       this.busy = false;
     }

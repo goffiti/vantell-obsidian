@@ -116,30 +116,188 @@
   align-items: center;
   gap: 4px;
 }
-.vantell-section {
-  margin: 14px 0;
+.vantell-panel-actions button.is-active {
+  color: var(--text-accent);
 }
-.vantell-section h3 {
-  margin: 0 0 6px;
-  font-size: var(--font-ui-small);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+
+/* ---- conversation list (one row per person on the mesh) ---- */
+.vantell-chats {
+  display: flex;
+  flex-direction: column;
+}
+.vantell-chat {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.vantell-chat.is-open {
+  background: var(--background-secondary);
+  border-radius: var(--radius-m);
+  border-bottom-color: transparent;
+  margin-bottom: 6px;
+}
+.vantell-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-m);
+}
+.vantell-chat-row:hover {
+  background: var(--background-modifier-hover);
+}
+.vantell-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+.vantell-avatar.is-h0 { background: #7c5cff; }
+.vantell-avatar.is-h1 { background: #2f9e73; }
+.vantell-avatar.is-h2 { background: #c2683a; }
+.vantell-avatar.is-h3 { background: #3a7fc2; }
+.vantell-avatar.is-h4 { background: #a2478f; }
+.vantell-avatar.is-h5 { background: #6b7280; }
+.vantell-chat-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.vantell-chat-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.vantell-chat-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vantell-chat-time {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+.vantell-chat-preview {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vantell-chat.is-waiting .vantell-chat-preview {
+  color: var(--text-normal);
+}
+.vantell-badge {
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ---- the thread itself ---- */
+.vantell-thread {
+  padding: 2px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vantell-thread-about {
+  font-size: var(--font-ui-smaller);
   color: var(--text-muted);
 }
-.vantell-card {
-  border: 1px solid var(--background-modifier-border);
+.vantell-bubble {
+  max-width: 88%;
+  padding: 6px 10px;
   border-radius: var(--radius-m);
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  background: var(--background-secondary);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
 }
-.vantell-card-head {
-  font-weight: 600;
+.vantell-bubble.is-in {
+  align-self: flex-start;
+  border-bottom-left-radius: 3px;
 }
-.vantell-card-actions {
+.vantell-bubble.is-out {
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+  background: color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+}
+.vantell-bubble-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+/* Inbound mesh content: displayed, never interpreted (Rule 1). */
+.vantell-bubble-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vantell-bubble-foot {
+  margin-top: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+.vantell-bubble-foot.is-answered {
+  color: var(--text-accent);
+}
+.vantell-bubble-actions {
   margin-top: 6px;
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---- inline knock composer ---- */
+.vantell-composer {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vantell-composer-q,
+.vantell-composer-p {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-ui-smaller);
+  padding: 6px 8px;
+  border-radius: var(--radius-m);
+  resize: vertical;
+}
+.vantell-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vantell-composer-topic {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-ui-smaller);
+}
+.vantell-composer-send {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vantell-composer .vantell-fineprint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  margin: 0;
 }
 .vantell-chip {
   display: inline-block;
@@ -189,34 +347,6 @@
   font-size: 10px;
   pointer-events: none;
 }
-.vantell-brain-grid {
-  display: grid;
-  gap: 8px;
-}
-.vantell-brain-card {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  padding: 8px 10px;
-}
-.vantell-brain-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.vantell-brain-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-accent);
-  box-shadow: 0 0 0 0 var(--text-accent);
-  animation: vantell-pulse 2.6s infinite;
-}
-.vantell-brain-name {
-  font-weight: 600;
-}
-.vantell-brain-knock {
-  margin-top: 6px;
-}
 .vantell-code-input {
   text-transform: uppercase;
 }
@@ -228,9 +358,4 @@
   color: var(--text-muted);
   margin: 4px 0;
   cursor: pointer;
-}
-@keyframes vantell-pulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-accent) 45%, transparent); }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
 }
