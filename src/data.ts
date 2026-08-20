@@ -72,7 +72,9 @@ export interface DeviceState {
   apiBase: string;
   /** Inbox cursor — created_at of the newest envelope ever ingested. */
   inboxCursor?: string;
-  /** Envelopes answered/dismissed — never re-surfaced. Capped list. */
+  /** Envelopes resolved (answered, declined, dismissed) — never re-surfaced.
+   * Written only through `markHandled`, which is what actually enforces the
+   * cap; the inbox cursor stops the relay re-serving what falls off. */
   handledEnvelopes: string[];
   /** Ingested but unresolved envelopes (open requests). */
   pendingEnvelopes: StoredEnvelope[];

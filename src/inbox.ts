@@ -59,7 +59,12 @@ export interface IncomingRequest {
   question: string;
   topic: string | null;
   level: number | null;
-  consent: 'approved' | 'pending' | 'denied' | 'unknown';
+  /** 'unknown' = the relay answered and had no knock for this envelope (it
+   * predates consent tracking). 'unchecked' = the consent route did not
+   * answer at all this poll, so the state is simply not known yet — a
+   * distinction the owner needs, because only one of the two is their
+   * problem to act on. */
+  consent: 'approved' | 'pending' | 'denied' | 'unknown' | 'unchecked';
   knockId: string | null;
 }
 
@@ -88,6 +93,23 @@ function decodeEnvelope(
 
 function nameFromDid(did: string): string {
   return did.split(':').pop() ?? did;
+}
+
+/** How many resolved envelope ids to remember. The inbox cursor already
+ * stops the relay from re-serving them, so this list only guards the window
+ * between ingest and resolution — it never needs to be the whole history,
+ * and an unbounded one is re-serialized to disk on every decision. */
+const HANDLED_CAP = 500;
+
+/** Mark envelopes resolved: never surface them again, and drop them from the
+ * pending list. The single place that writes `handledEnvelopes`, so the cap
+ * documented in data.ts is actually true. */
+export function markHandled(plugin: VantellPlugin, ids: string[]): void {
+  if (ids.length === 0) return;
+  const seen = new Set(ids);
+  plugin.device.handledEnvelopes = [...plugin.device.handledEnvelopes, ...ids].slice(-HANDLED_CAP);
+  plugin.device.pendingEnvelopes = plugin.device.pendingEnvelopes.filter((p) => !seen.has(p.id));
+  plugin.saveDevice();
 }
 
 /** Poll the inbox + consent state. Returns open requests and any
@@ -121,6 +143,7 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
   const notifications: string[] = [];
   const answers: IncomingAnswer[] = [];
   const queries: InboxEnvelope[] = [];
+  const resolved: string[] = [];
   for (const env of plugin.device.pendingEnvelopes) {
     const body = decodeEnvelope(env, ident.private_key_b64);
     if (!body) continue; // sealed or foreign — a future client's problem
@@ -128,7 +151,7 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
       const decision = typeof body['decision'] === 'string' ? body['decision'] : 'answered';
       const receipt = typeof body['receipt_id'] === 'string' ? body['receipt_id'] : '';
       notifications.push(`Your knock was ${decision} — receipt ${receipt}`);
-      plugin.device.handledEnvelopes.push(env.id);
+      resolved.push(env.id);
       continue;
     }
     if (body['type'] === 'answer') {
@@ -141,22 +164,26 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
           ? body['sources'].filter((s): s is string => typeof s === 'string').slice(0, 10)
           : [],
       });
-      plugin.device.handledEnvelopes.push(env.id);
+      resolved.push(env.id);
       continue;
     }
     if (body['type'] === 'query') queries.push(env);
   }
-  if (notifications.length > 0 || answers.length > 0) {
-    plugin.device.pendingEnvelopes = plugin.device.pendingEnvelopes.filter(
-      (p) => !plugin.device.handledEnvelopes.includes(p.id),
-    );
-    plugin.saveDevice();
-  }
+  markHandled(plugin, resolved);
 
   let knocks: KnockRow[] = [];
+  // Whether the consent route actually answered. An empty list from a
+  // successful call means "no knock for this envelope"; an empty list from a
+  // failed one means nothing at all, and must never be reported as the first.
+  let consentChecked = false;
   if (queries.length > 0) {
     try {
-      knocks = (await signedGet<{ knocks: KnockRow[] }>(ident, base, '/v1/agent/knocks')).knocks;
+      // `?? []` matters more than usual here: consentChecked is about to
+      // assert the route answered, so a body without the key must not throw
+      // past that claim.
+      knocks =
+        (await signedGet<{ knocks?: KnockRow[] }>(ident, base, '/v1/agent/knocks')).knocks ?? [];
+      consentChecked = true;
     } catch {
       knocks = [];
     }
@@ -195,8 +222,9 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
       question: typeof body['question'] === 'string' ? body['question'] : '(no question text)',
       topic: typeof body['topic'] === 'string' ? body['topic'] : null,
       level: typeof body['level'] === 'number' ? body['level'] : null,
-      consent:
-        status === 'approved'
+      consent: !consentChecked
+        ? 'unchecked'
+        : status === 'approved'
           ? 'approved'
           : status === 'pending'
             ? 'pending'
@@ -206,6 +234,14 @@ export async function checkInbox(plugin: VantellPlugin): Promise<{
       knockId: knock?.knock_id ?? null,
     };
   });
+  // A decision is durable wherever it was made. Without this, a knock the
+  // owner declined on the dashboard stays in pendingEnvelopes forever, and
+  // the first poll that cannot reach the consent route resurrects it as
+  // 'unchecked' — badge, notice and all.
+  markHandled(
+    plugin,
+    requests.filter((r) => r.consent === 'denied').map((r) => r.envelopeId),
+  );
   return { requests, notifications, answers };
 }
 
@@ -227,6 +263,14 @@ export async function respondToKnock(
   try {
     await respondKnock(ident, plugin.device.apiBase, r.knockId, action, standing);
     r.consent = action === 'approve' ? 'approved' : 'denied';
+    if (action === 'deny') {
+      // Declined means gone from this device, not "hidden while the relay
+      // agrees". Without this, a poll that cannot reach the consent route
+      // re-surfaces the envelope as an unchecked, still-waiting question.
+      markHandled(plugin, [r.envelopeId]);
+      plugin.lastRequests = plugin.lastRequests.filter((x) => x.envelopeId !== r.envelopeId);
+      plugin.setRequestCount(plugin.lastRequests.length);
+    }
     if (standing && action === 'approve') {
       new Notice(
         `${r.fromName} can now ask without waiting for your yes. ` +
@@ -372,6 +416,17 @@ export class RequestsModal extends Modal {
             .setButtonText('Open dashboard')
             .onClick(() => window.open('https://app.vantell.ai/knocks', '_blank')),
         );
+      } else if (r.consent === 'unchecked') {
+        row.setDesc(
+          'The consent check did not answer this time, so this question’s state ' +
+            'is not known yet — nothing is wrong with the question itself.',
+        );
+        row.addButton((b) =>
+          b.setButtonText('Check again').onClick(() => {
+            this.close();
+            void this.plugin.pollInbox(false);
+          }),
+        );
       } else {
         row.setDesc(
           r.consent === 'denied'
@@ -380,18 +435,18 @@ export class RequestsModal extends Modal {
                 'the question and it will show up here to approve.',
         );
       }
-      row.addButton((b) =>
-        b.setButtonText('Dismiss').onClick(async () => {
-          this.plugin.device.handledEnvelopes.push(r.envelopeId);
-          this.plugin.device.pendingEnvelopes = this.plugin.device.pendingEnvelopes.filter(
-            (p) => p.id !== r.envelopeId,
-          );
-          this.plugin.saveDevice();
-          this.requests = this.requests.filter((x) => x.envelopeId !== r.envelopeId);
-          this.plugin.setRequestCount(this.requests.length);
-          this.render();
-        }),
-      );
+      // No Dismiss on an unchecked knock: it would permanently discard a
+      // question whose state was merely unfetchable this poll.
+      if (r.consent !== 'unchecked') {
+        row.addButton((b) =>
+          b.setButtonText('Dismiss').onClick(() => {
+            markHandled(this.plugin, [r.envelopeId]);
+            this.requests = this.requests.filter((x) => x.envelopeId !== r.envelopeId);
+            this.plugin.setRequestCount(this.requests.length);
+            this.render();
+          }),
+        );
+      }
     }
   }
 }
@@ -696,10 +751,7 @@ export class ComposeAnswerModal extends Modal {
         to: r.fromDid,
         ...encodeEnvelope(answer, askerPubkey),
       });
-      this.plugin.device.handledEnvelopes.push(r.envelopeId);
-      this.plugin.device.pendingEnvelopes = this.plugin.device.pendingEnvelopes.filter(
-        (p) => p.id !== r.envelopeId,
-      );
+      markHandled(this.plugin, [r.envelopeId]);
       // Keep the owner's own half of the conversation (device-local, L-DEVICE)
       // so the panel can show a thread instead of a one-sided inbox.
       this.plugin.device.sentAnswers = [

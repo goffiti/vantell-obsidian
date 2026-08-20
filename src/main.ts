@@ -223,7 +223,12 @@ export default class VantellPlugin extends Plugin {
           new AnswerModal(this.app, a.fromName, a.topic, a.summary, a.sources).open();
         }
       }
-      const openReqs = requests.filter((r) => r.consent !== 'denied');
+      // `handledEnvelopes` is re-read AFTER the await on purpose: the owner
+      // may have declined or dismissed something while this poll was in
+      // flight, and a stale snapshot would put it straight back.
+      const openReqs = requests.filter(
+        (r) => r.consent !== 'denied' && !this.device.handledEnvelopes.includes(r.envelopeId),
+      );
       const newlyArrived = openReqs.length > this.lastRequests.length && !startup;
       this.lastRequests = openReqs;
       this.setRequestCount(openReqs.length);

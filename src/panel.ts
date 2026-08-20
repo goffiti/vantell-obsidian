@@ -354,8 +354,8 @@ export class VantellView extends ItemView {
     for (const r of open) {
       const c = convo(r.fromDid, r.fromName);
       c.events.push({ at: ms(r.createdAt), dir: 'in', kind: 'question', request: r });
-      // 'unknown' counts too: it also means the relay's consent check didn't
-      // come through, and a real question with no badge is the worse failure.
+      // Everything still open counts, including 'unchecked' and 'unknown':
+      // a real question sitting there with no badge is the worse failure.
       c.needsAction++;
     }
     for (const k of this.plugin.device.sentKnocks) {
@@ -559,14 +559,32 @@ export class VantellView extends ItemView {
       open.onclick = () => window.open('https://app.vantell.ai/knocks', '_blank');
       return;
     }
-    // Two ways to land here, and the plugin genuinely cannot tell them apart:
-    // a knock older than consent tracking, or a consent check that failed on
-    // this poll. Saying only the first would be a guess presented as fact.
+    if (r.consent === 'unchecked') {
+      // The relay never answered this poll. Nothing is wrong with the knock —
+      // we just don't know yet, and saying more would be a guess.
+      b.createDiv({
+        cls: 'vantell-bubble-foot',
+        text: "Couldn't reach the consent check just now — this question is intact, its state isn't known yet.",
+      });
+      const row = b.createDiv({ cls: 'vantell-bubble-actions' });
+      const retry = row.createEl('button', { text: 'Check again' });
+      retry.onclick = async () => {
+        retry.disabled = true;
+        retry.setText('Checking…');
+        await this.plugin.pollInbox(false);
+        // pollInbox swallows every error, so without this the button is a
+        // visible no-op whenever the relay is still unreachable.
+        const now = this.plugin.lastRequests.find((x) => x.envelopeId === r.envelopeId);
+        if (now?.consent === 'unchecked') {
+          new Notice("Still couldn't reach the consent check — the question is safe here.");
+        }
+        this.paint();
+      };
+      return;
+    }
     b.createDiv({
       cls: 'vantell-bubble-foot',
-      text:
-        "Couldn't confirm this one's consent state — either it predates consent " +
-        'tracking or the check did not come through. Refresh, or ask them to re-send.',
+      text: 'Sent before consent tracking covered it — ask them to re-send.',
     });
   }
 
